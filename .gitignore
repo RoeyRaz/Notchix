@@ -1,0 +1,9 @@
+target/
+dist/
+nock-custom/
+*.msix
+*.cer
+Cargo.lock.bak
+*.zip
+installer/Output/
+packaging/linux/out/
