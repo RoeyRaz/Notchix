@@ -324,6 +324,14 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         WM_MOUSELEAVE => a.on_mouse_leave(),
         WM_LBUTTONDOWN => a.on_lbutton_down(lo(lp), hi(lp)),
         WM_LBUTTONUP => a.on_lbutton_up(),
+        WM_KEYDOWN
+            if wp.0 as u32 == VK_BACK.0 as u32
+                && GetAsyncKeyState(VK_CONTROL.0 as i32) < 0
+                && a.is_entering() =>
+        {
+            a.on_char(0x7f);
+            return LRESULT(0);
+        }
         WM_MOUSEWHEEL => {
             let delta = ((wp.0 >> 16) & 0xffff) as u16 as i16 as i32;
             let mut p = POINT {

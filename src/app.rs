@@ -2443,7 +2443,7 @@ impl App {
                 self.start_entry();
                 self.spotify_client_id_entry = true;
                 self.entering = Some(self.spotify_client_id.encode_utf16().collect());
-                self.spotify_status = "Ctrl+V paste · Ctrl+C copy · Enter saves.".into();
+                self.spotify_status = "Paste the Client ID, then press Enter to save.".into();
             }
             Act::SpotifyConnect => {
                 if self.spotify_client_id.trim().is_empty() {
@@ -2459,7 +2459,7 @@ impl App {
                 self.start_entry();
                 self.spotify_query_entry = true;
                 self.entering = Some(self.spotify_query.encode_utf16().collect());
-                self.spotify_status = "Ctrl+V paste · Ctrl+C copy · Enter searches.".into();
+                self.spotify_status = "Type a song or artist, then press Enter to search.".into();
             }
             Act::SpotifySearch => {
                 if self.spotify_query.trim().is_empty() { self.spotify_status = "Type a song, artist, or album to search.".into(); }

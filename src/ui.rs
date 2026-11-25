@@ -24,12 +24,16 @@ fn glass_card(a: &App, r: Rect, radius: f32, ca: f32, hovered: bool) {
 fn glass_card_k(a: &App, r: Rect, radius: f32, ca: f32, hover: f32, tint: Color) {
     let g = &a.gfx;
     let k = hover.clamp(0.0, 1.0);
-    g.fill_rrect(r, radius, Color(0.12, 0.13, 0.15, (0.46 + 0.10 * k) * ca));
-    if k > 0.001 { g.fill_rrect(r, radius, tint.fade(0.10 * k * ca)); }
-    g.fill_rrect(r, radius, Color::white((0.035 + 0.028 * k) * ca));
+    g.fill_rrect(r, radius, Color(0.10, 0.11, 0.14, (0.41 + 0.08 * k) * ca));
+    if k > 0.001 { g.fill_rrect(r, radius, tint.fade(0.12 * k * ca)); }
+    g.fill_rrect(r, radius, Color::white((0.048 + 0.032 * k) * ca));
     g.stroke_rrect(r, radius, Color(0.0, 0.0, 0.0, 0.11 * ca), 0.75);
     g.stroke_rrect(Rect::new(r.x + 0.6, r.y + 0.6, (r.w - 1.2).max(0.0), (r.h - 1.2).max(0.0)), radius,
-        Color::white((0.055 + 0.12 * k) * ca), 0.8);
+        Color::white((0.082 + 0.13 * k) * ca), 0.8);
+    if r.h >= 22.0 && r.w > radius * 2.0 {
+        g.line((r.x + radius * 0.78, r.y + 1.1), (r.x + r.w - radius * 0.78, r.y + 1.1),
+            0.7, Color::white((0.075 + 0.075 * k) * ca));
+    }
     if k > 0.01 {
         g.stroke_rrect(Rect::new(r.x + 0.5, r.y + 0.5, (r.w - 1.0).max(0.0), (r.h - 1.0).max(0.0)), radius,
             tint.fade(0.34 * k * ca), 0.9);
@@ -191,7 +195,7 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
         }
     }
     g.fill_rrect(body, rad, base);
-    if a.glass { g.fill_rrect(body, rad, Color::white(if live { 0.035 } else { 0.025 })); }
+    if a.glass { g.fill_rrect(body, rad, Color::white(if live { 0.052 } else { 0.038 })); }
     if a.glass && t < 0.05 && !a.mstate.has_track() && !a.alerting() {
         // A very small pool of reflected light gives the resting acrylic
         // depth without turning the entire edge into a bright outline.
@@ -211,8 +215,8 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
     g.stroke_rrect(
         Rect::new(body.x + 0.5, body.y + 0.5, body.w - 1.0, body.h - 1.0),
         rad,
-        Color::white(if live { 0.16 } else { 0.13 }),
-        0.9,
+        Color::white(if live { 0.21 } else { 0.17 }),
+        1.0,
     );
     g.stroke_rrect(
         Rect::new(body.x + 1.4, body.y + 1.4, body.w - 2.8, body.h - 2.8),
@@ -220,7 +224,8 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
         Color(0.0, 0.0, 0.0, 0.15),
         0.8,
     );
-    g.line((body.x + rad, 3.0), (body.x + body.w - rad, 3.0), 0.8, Color::white(0.13));
+    g.line((body.x + rad + 8.0, 2.0), (body.x + body.w - rad - 8.0, 2.0), 1.1, Color::white(0.18));
+    g.line((body.x + rad + 28.0, 4.2), (body.x + body.w - rad - 28.0, 4.2), 0.7, Color::white(0.07));
     // Keep the resting rim neutral. Accent is reserved for artwork, actual
     // notifications and interaction, never fixed pink/green edge segments.
     if !a.expanded && t < 0.05 {
@@ -783,7 +788,8 @@ fn draw_miso_at(a: &App, ca: f32, cx: f32, baseline: f32, reacting: bool) {
     let cy = baseline + if reacting || playful { (t * 7.0).sin() * 1.2 } else if playing { (t * 4.2).sin() * 0.7 } else { (t * 0.7).sin() * 0.2 };
     let pearl = Color(0.96, 0.96, 1.0, ca);
     let blue = glass_accent(a).fade(ca);
-    let glow = 0.06 + if reacting || playful { 0.15 } else if hovering { 0.11 } else if playing { 0.08 } else { 0.02 };
+    let breathing = 0.5 + 0.5 * (t * 1.15).sin();
+    let glow = 0.06 + if reacting || playful { 0.17 } else if hovering { 0.13 } else if playing { 0.10 + 0.10 * a.level } else { 0.035 + 0.025 * breathing };
     g.fill_rrect(Rect::new(cx - 15.0, cy - 13.0, 30.0, 26.0), 13.0, blue.fade(glow));
     // Miso has a small soft shell and two rounded ears. Geometry is drawn in
     // the same reserved 40px area, with no image asset or extra animation.
@@ -941,18 +947,6 @@ fn hot_k(a: &App, act: Act) -> f32 {
     a.hover.iter().find(|(x, _)| *x == act).map_or(0.0, |(_, v)| *v)
 }
 
-/// Home widgets and their navigation destinations share one hover language.
-/// Media controls also illuminate Media when they sit above the Home card hit.
-fn linked_hot_k(a: &App, page: Page) -> f32 {
-    let mut k = hot_k(a, Act::Tab(page));
-    if page == Page::Media {
-        for act in [Act::Prev, Act::PlayPause, Act::Next, Act::SpotifyMute, Act::SpotifyVolume] {
-            k = k.max(hot_k(a, act));
-        }
-    }
-    k
-}
-
 fn mix(a: Color, b: Color, t: f32) -> Color {
     let t = t.clamp(0.0, 1.0);
     Color(a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, a.2 + (b.2 - a.2) * t, a.3 + (b.3 - a.3) * t)
@@ -1025,42 +1019,46 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         return;
     }
 
-    // top row: pin, labelled tabs, collapse. The pages sit below it.
+    // Top actions sit outside two inset, macOS-like segmented navigation rails.
     let pin = Rect::new(12.0, 8.0, 28.0, 28.0);
     hits.push(Hit { r: pin, act: Act::Pin });
+    if hot(a, Act::Pin) { g.fill_circle(pin.cx(), pin.cy(), 13.0, Color::white(0.10 * ca)); }
     let pc = if a.pinned { a.accent } else if hot(a, Act::Pin) { T1 } else { T3 };
     g.icon('\u{E718}', pin, &f.icon14, pc.fade(ca));
 
     let chev = Rect::new(EXP_W - 40.0, 8.0, 28.0, 28.0);
     hits.push(Hit { r: chev, act: Act::Collapse });
+    if hot(a, Act::Collapse) { g.fill_circle(chev.cx(), chev.cy(), 13.0, Color::white(0.10 * ca)); }
     g.icon('\u{E70E}', chev, &f.icon14, (if hot(a, Act::Collapse) { T1 } else { T3 }).fade(ca));
 
-    // Main journeys are prominent; utility pages stay one click away below.
     let rects = tab_rects();
-    // Five individual destinations above a quieter utility strip. Their
-    // hit boxes remain stable while the visual language differs from pills.
-    g.fill_rrect(Rect::new(67.0, 40.0, EXP_W - 134.0, 24.0), 8.0, Color::white(0.035 * ca));
+    let primary_rail = Rect::new(45.0, 5.0, EXP_W - 90.0, 34.0);
+    let utility_rail = Rect::new(67.0, 41.0, EXP_W - 134.0, 24.0);
+    g.fill_rrect(primary_rail, 17.0, Color::white(0.045 * ca));
+    g.stroke_rrect(primary_rail, 17.0, Color::white(0.075 * ca), 0.8);
+    g.fill_rrect(utility_rail, 12.0, Color::white(0.026 * ca));
+    g.stroke_rrect(utility_rail, 12.0, Color::white(0.055 * ca), 0.7);
     let active_index = PAGES.iter().position(|p| *p == a.page).unwrap_or(0);
-    let pill = Rect::new(a.tab_x, if active_index < 5 { 7.0 } else { 41.0 }, a.tab_w, if active_index < 5 { 30.0 } else { 23.0 });
-    if active_index >= 5 {
-        g.fill_rrect(pill, 7.0, Color::white(0.10 * ca));
-    }
+    let pill_y = if active_index < 5 { 7.0 } else { 41.0 };
+    let pill_h = if active_index < 5 { 30.0 } else { 23.0 };
+    let pill = Rect::new(a.tab_x, pill_y, a.tab_w, pill_h);
+    let active_tint = page_accent(a, a.page);
+    g.fill_rrect(pill, pill_h * 0.5, Color::white(0.085 * ca));
+    g.fill_rrect(pill, pill_h * 0.5, active_tint.fade(0.075 * ca));
+    g.stroke_rrect(Rect::new(pill.x + 0.5, pill.y + 0.5, pill.w - 1.0, pill.h - 1.0),
+        (pill_h * 0.5 - 0.5).max(1.0), Color::white(0.15 * ca), 0.8);
+    g.fill_rrect(Rect::new(pill.cx() - 8.0, pill.y + pill_h - 2.5, 16.0, 1.5), 0.75, active_tint.fade(ca));
     for (i, p) in PAGES.iter().enumerate() {
         let r = rects[i];
         let act = Act::Tab(*p);
         hits.push(Hit { r, act });
-        let k = linked_hot_k(a, *p);
-        if i < 5 {
-            let selected = a.page == *p;
-            glass_card_k(a, r, 10.0, ca * if selected { 0.8 } else { 0.42 + 0.3 * k }, k.max(if selected { 0.28 } else { 0.0 }), page_accent(a, *p));
-            if a.page == *p {
-                g.fill_rrect(Rect::new(r.x + 12.0, r.y + r.h - 3.0, r.w - 24.0, 2.0), 1.0, page_accent(a, *p).fade(ca));
-            }
-        } else if a.page != *p {
-            g.fill_rrect(r, 7.0, page_accent(a, *p).fade(0.07 * k * ca));
-        }
+        let k = hot_k(a, act);
         let selected = a.page == *p;
-        let col = if selected { T1 } else { mix(Color::white(if i < 5 { 0.75 } else { 0.62 }), T1, k) };
+        if !selected && k > 0.01 {
+            g.fill_rrect(r, if i < 5 { 15.0 } else { 10.0 }, page_accent(a, *p).fade(0.075 * k * ca));
+        }
+        let neutral = Color::white(if i < 5 { 0.75 } else { 0.62 });
+        let col = if selected { mix(T1, page_accent(a, *p), 0.20) } else { mix(neutral, T1, k) };
         if i < 5 {
             g.icon(TAB_ICONS[i], Rect::new(r.x + 11.0, r.y + 6.0, 21.0, 18.0), &f.icon14, col.fade(ca));
             g.text(TAB_LABELS[i], Rect::new(r.x + 34.0, r.y + 5.0, r.w - 39.0, 20.0), &f.small, col.fade(ca), Align::Left);
@@ -1144,7 +1142,7 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     hits.push(Hit { r: overview, act: Act::Tab(Page::Agenda) });
     // One continuous composition instead of three competing dark-blue cards.
     // Hover is a material shift, not a thick outline.
-    let hero_hover = linked_hot_k(a, Page::Media);
+    let hero_hover = hot_k(a, Act::Tab(Page::Media));
     glass_card_k(a, music, 22.0, ca, hero_hover, glass_accent(a));
     glass_card_k(a, Rect::new(380.0, 6.0, 202.0, 136.0), 22.0, ca,
         hot_k(a, Act::WeatherOpen).max(hot_k(a, Act::Tab(Page::Agenda))), page_accent(a, Page::Agenda));
@@ -1435,9 +1433,13 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     }
     g.stroke_rrect(Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0), 15.0, Color::white(0.25 * ca), 0.8);
     g.stroke_rrect(ar, 14.0, accent.fade(0.42 * ca), 1.0);
+    if m.playing {
+        g.stroke_rrect(Rect::new(ar.x - 1.4, ar.y - 1.4, ar.w + 2.8, ar.h + 2.8), 15.4,
+            accent.fade((0.10 + 0.12 * a.level) * ca), 1.1);
+    }
 
     let tx = 126.0;
-    let tw = 210.0;
+    let tw = 190.0;
     g.text("NOW PLAYING", Rect::new(tx, 25.0, tw, 16.0), &f.tiny, accent.fade(ca), Align::Left);
     let title = if m.title.is_empty() {
         "Unknown title"
@@ -1487,13 +1489,13 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
 
     // Lyrics are part of the player surface, in the position shown in the
     // user's reference. The full lyric page remains one tap away.
-    let lyric_pane = Rect::new(353.0, 24.0, 214.0, 139.0);
+    let lyric_pane = Rect::new(330.0, 24.0, 237.0, 139.0);
     g.fill_rrect(lyric_pane, 16.0, Color(0.0, 0.0, 0.0, 0.16 * ca));
     g.fill_rrect(lyric_pane, 16.0, accent.fade(0.045 * ca));
     g.stroke_rrect(lyric_pane, 16.0, Color::white(0.12 * ca), 0.8);
-    g.fill_rrect(Rect::new(364.0, 35.0, 2.0, 20.0), 1.0, accent.fade(0.78 * ca));
-    g.text("LYRICS", Rect::new(373.0, 30.0, 100.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
-    let lyrics_button = Rect::new(494.0, 27.0, 61.0, 23.0);
+    g.fill_rrect(Rect::new(341.0, 35.0, 2.0, 20.0), 1.0, accent.fade(0.78 * ca));
+    g.text("LYRICS", Rect::new(350.0, 30.0, 100.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
+    let lyrics_button = Rect::new(496.0, 27.0, 59.0, 23.0);
     hits.push(Hit { r: lyrics_button, act: Act::LyricsToggle });
     g.fill_rrect(lyrics_button, 10.0, (if hot(a, Act::LyricsToggle) { accent.fade(0.22) } else { Color::white(0.07) }).fade(ca));
     g.text("Full lyrics", lyrics_button, &f.tiny, accent.fade(ca), Align::Center);
@@ -1502,22 +1504,22 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         .filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist));
     if let Some(data) = lyric_data {
         if data.loading || data.lines.is_empty() {
-            g.text(&data.message, Rect::new(371.0, 62.0, 177.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+            g.text(&data.message, Rect::new(346.0, 62.0, 208.0, 57.0), &f.small, T2.fade(ca), Align::Center);
         } else {
             let (pos, _) = m.progress(sys::filetime_now());
             let current = if data.synced {
                 data.lines.iter().rposition(|line| line.at.is_some_and(|at| at <= pos)).unwrap_or(0)
             } else { 0 };
             if current > 0 {
-                g.text(&data.lines[current - 1].text, Rect::new(374.0, 59.0, 174.0, 20.0), &f.tiny, T3.fade(0.68 * ca), Align::Center);
+                g.text(&data.lines[current - 1].text, Rect::new(347.0, 58.0, 203.0, 20.0), &f.tiny, T3.fade(0.68 * ca), Align::Center);
             }
-            g.text(&data.lines[current].text, Rect::new(370.0, 81.0, 182.0, 36.0), &f.small, T1.fade(ca), Align::Center);
+            g.text(&data.lines[current].text, Rect::new(345.0, 77.0, 207.0, 48.0), &f.title, T1.fade(ca), Align::Center);
             if let Some(next_line) = data.lines.get(current + 1) {
-                g.text(&next_line.text, Rect::new(374.0, 122.0, 174.0, 20.0), &f.tiny, T3.fade(0.75 * ca), Align::Center);
+                g.text(&next_line.text, Rect::new(347.0, 128.0, 203.0, 20.0), &f.tiny, T3.fade(0.75 * ca), Align::Center);
             }
         }
     } else {
-        g.text("Lyrics appear here when available", Rect::new(371.0, 62.0, 177.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+        g.text("Lyrics appear here when available", Rect::new(346.0, 62.0, 208.0, 57.0), &f.small, T2.fade(ca), Align::Center);
     }
 
     // A single fine waveform line spans both halves of the player.
