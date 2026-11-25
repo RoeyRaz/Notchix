@@ -2443,7 +2443,7 @@ impl App {
                 self.start_entry();
                 self.spotify_client_id_entry = true;
                 self.entering = Some(self.spotify_client_id.encode_utf16().collect());
-                self.spotify_status = "Paste the Client ID, then press Enter to save.".into();
+                self.spotify_status = "Ctrl+V paste · Ctrl+C copy · Enter saves.".into();
             }
             Act::SpotifyConnect => {
                 if self.spotify_client_id.trim().is_empty() {
@@ -2459,7 +2459,7 @@ impl App {
                 self.start_entry();
                 self.spotify_query_entry = true;
                 self.entering = Some(self.spotify_query.encode_utf16().collect());
-                self.spotify_status = "Type a song or artist, then press Enter to search.".into();
+                self.spotify_status = "Ctrl+V paste · Ctrl+C copy · Enter searches.".into();
             }
             Act::SpotifySearch => {
                 if self.spotify_query.trim().is_empty() { self.spotify_status = "Type a song, artist, or album to search.".into(); }
@@ -3154,6 +3154,15 @@ impl App {
             self.render();
             return;
         }
+        if self.entering.is_some() && c == 0x16 {
+            self.paste_entry_text();
+            self.render();
+            return;
+        }
+        if self.entering.is_some() && c == 0x03 {
+            self.copy_entry_text();
+            return;
+        }
         enum Do {
             Commit,
             Cancel,
@@ -3204,6 +3213,62 @@ impl App {
             Do::Redraw => {}
         }
         self.render();
+    }
+
+    /// Ctrl+V replaces the active custom text field with sanitized clipboard
+    /// text. These fields are drawn directly rather than native edit controls,
+    /// so handle clipboard shortcuts in the window's character stream.
+    fn paste_entry_text(&mut self) {
+        if sys::clipboard_excluded() {
+            return;
+        }
+        let Some(text) = sys::clipboard_text(self.hwnd) else {
+            return;
+        };
+        let limit = if self.spotify_client_id_entry {
+            100
+        } else if self.entry_timer {
+            3
+        } else {
+            80
+        };
+        let mut pasted = Vec::new();
+        for mut ch in text.chars() {
+            if ch.is_control() {
+                continue;
+            }
+            if self.entry_timer && !ch.is_ascii_digit() {
+                continue;
+            }
+            if self.spotify_client_id_entry
+                && !(ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
+            {
+                continue;
+            }
+            if ch == '\u{00a0}' {
+                ch = ' ';
+            }
+            let mut encoded = [0u16; 2];
+            let units = ch.encode_utf16(&mut encoded);
+            if pasted.len() + units.len() > limit {
+                break;
+            }
+            pasted.extend_from_slice(units);
+        }
+        if let Some(buf) = self.entering.as_mut() {
+            *buf = pasted;
+        }
+    }
+
+    /// Ctrl+C copies the complete active custom text field to the clipboard.
+    fn copy_entry_text(&self) {
+        if sys::clipboard_excluded() {
+            return;
+        }
+        if let Some(buf) = &self.entering {
+            let text = String::from_utf16_lossy(buf);
+            let _ = sys::set_clipboard_text(self.hwnd, &text);
+        }
     }
 
     fn finish_typing(&mut self) {

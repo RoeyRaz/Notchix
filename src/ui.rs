@@ -941,6 +941,18 @@ fn hot_k(a: &App, act: Act) -> f32 {
     a.hover.iter().find(|(x, _)| *x == act).map_or(0.0, |(_, v)| *v)
 }
 
+/// Home widgets and their navigation destinations share one hover language.
+/// Media controls also illuminate Media when they sit above the Home card hit.
+fn linked_hot_k(a: &App, page: Page) -> f32 {
+    let mut k = hot_k(a, Act::Tab(page));
+    if page == Page::Media {
+        for act in [Act::Prev, Act::PlayPause, Act::Next, Act::SpotifyMute, Act::SpotifyVolume] {
+            k = k.max(hot_k(a, act));
+        }
+    }
+    k
+}
+
 fn mix(a: Color, b: Color, t: f32) -> Color {
     let t = t.clamp(0.0, 1.0);
     Color(a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, a.2 + (b.2 - a.2) * t, a.3 + (b.3 - a.3) * t)
@@ -1037,7 +1049,7 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let r = rects[i];
         let act = Act::Tab(*p);
         hits.push(Hit { r, act });
-        let k = hot_k(a, act);
+        let k = linked_hot_k(a, *p);
         if i < 5 {
             let selected = a.page == *p;
             glass_card_k(a, r, 10.0, ca * if selected { 0.8 } else { 0.42 + 0.3 * k }, k.max(if selected { 0.28 } else { 0.0 }), page_accent(a, *p));
@@ -1132,7 +1144,7 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     hits.push(Hit { r: overview, act: Act::Tab(Page::Agenda) });
     // One continuous composition instead of three competing dark-blue cards.
     // Hover is a material shift, not a thick outline.
-    let hero_hover = hot_k(a, Act::Tab(Page::Media));
+    let hero_hover = linked_hot_k(a, Page::Media);
     glass_card_k(a, music, 22.0, ca, hero_hover, glass_accent(a));
     glass_card_k(a, Rect::new(380.0, 6.0, 202.0, 136.0), 22.0, ca,
         hot_k(a, Act::WeatherOpen).max(hot_k(a, Act::Tab(Page::Agenda))), page_accent(a, Page::Agenda));
@@ -1401,75 +1413,32 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         return;
     }
 
-    let player_card = Rect::new(16.0, 8.0, EXP_W - 32.0, 196.0);
+    // A compact, wide player inspired by the supplied notch references:
+    // thumbnail and transport on the left, always-visible lyrics on the
+    // right, and one shared progress line along the bottom.
+    let accent = glass_accent(a);
+    let player_card = Rect::new(16.0, 8.0, EXP_W - 32.0, 232.0);
     glass_card(a, player_card, 24.0, ca, false);
-    // A single quiet glass plane makes the artwork, track and controls read
-    // as one player. Cover colour remains on text and the seek path only.
-    g.fill_rrect(Rect::new(24.0, 16.0, EXP_W - 48.0, 180.0), 19.0, Color::white(0.025 * ca));
+    g.fill_rrect(Rect::new(24.0, 16.0, EXP_W - 48.0, 216.0), 19.0, Color::white(0.022 * ca));
 
-    // The full lyric view remains available; the current line is always
-    // visible below the player when the source supplies lyrics.
-    let lyrics_button = Rect::new(390.0, 98.0, 84.0, 22.0);
-    hits.push(Hit { r: lyrics_button, act: Act::LyricsToggle });
-    glass_card_k(a, lyrics_button, 12.0, ca, hot_k(a, Act::LyricsToggle), glass_accent(a));
-    g.text("Lyrics ↗", lyrics_button, &f.small, glass_accent(a).fade(ca), Align::Center);
-    let queue_button = Rect::new(480.0, 98.0, 84.0, 22.0);
-    hits.push(Hit { r: queue_button, act: Act::AssistantOpen });
-    glass_card_k(a, queue_button, 12.0, ca, hot_k(a, Act::AssistantOpen), glass_accent(a));
-    g.text("+ Queue", queue_button, &f.small, glass_accent(a).fade(ca), Align::Center);
-    let lyric_strip = Rect::new(16.0, 209.0, EXP_W - 32.0, 38.0);
-    g.fill_rrect(lyric_strip, 13.0, Color(0.0, 0.0, 0.0, 0.16 * ca));
-    g.fill_rrect(lyric_strip, 13.0, glass_accent(a).fade(0.055 * ca));
-    g.stroke_rrect(lyric_strip, 13.0, Color::white(0.13 * ca), 0.8);
-    g.fill_rrect(Rect::new(25.0, 218.0, 2.0, 20.0), 1.0, glass_accent(a).fade(0.78 * ca));
-    let lyric = crate::lyrics::snapshot()
-        .filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist))
-        .map(|data| {
-            if data.loading || data.lines.is_empty() { data.message }
-            else {
-                let (pos, _) = m.progress(sys::filetime_now());
-                let index = if data.synced { data.lines.iter().rposition(|line| line.at.is_some_and(|at| at <= pos)).unwrap_or(0) } else { 0 };
-                data.lines[index].text.clone()
-            }
-        }).unwrap_or_else(|| "Finding lyrics...".into());
-    g.text("LYRICS", Rect::new(37.0, 210.0, 65.0, 15.0), &f.tiny, T3.fade(ca), Align::Left);
-    g.text(&lyric, Rect::new(37.0, 222.0, EXP_W - 68.0, 20.0), &f.small, T1.fade(ca), Align::Left);
-
-    // artwork
-    let ar = Rect::new(27.0, 20.0, 122.0, 122.0);
+    let ar = Rect::new(28.0, 27.0, 86.0, 86.0);
     match art {
-        Some(bmp) => g.draw_bitmap(bmp, ar, 16.0, ca),
+        Some(bmp) => g.draw_bitmap(bmp, ar, 14.0, ca),
         None => {
-            g.fill_rrect(ar, 16.0, Color::white(0.10 * ca));
+            g.fill_rrect(ar, 14.0, Color::white(0.10 * ca));
             g.text("\u{266A}", ar, &f.big, T3.fade(ca), Align::Center);
         }
     }
     if loading.is_some() {
-        g.fill_rrect(ar, 16.0, Color(0.0, 0.0, 0.0, 0.5 * ca));
+        g.fill_rrect(ar, 14.0, Color(0.0, 0.0, 0.0, 0.5 * ca));
         spinner(g, ar.cx(), ar.cy(), 18.0, a.spin_t, a.accent, ca);
     }
-    g.stroke_rrect(Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0), 17.0, Color::white(0.23 * ca), 0.8);
-    g.stroke_rrect(ar, 16.0, glass_accent(a).fade(0.43 * ca), 1.1);
+    g.stroke_rrect(Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0), 15.0, Color::white(0.25 * ca), 0.8);
+    g.stroke_rrect(ar, 14.0, accent.fade(0.42 * ca), 1.0);
 
-    // Spotify-specific volume from Windows Volume Mixer. This is not Spotify's
-    // internal playback-volume setting, and does not change system master volume.
-    // Query only while the media panel is in use to keep idle work near zero.
-    if let Some(v) = a.spotify_vol {
-        g.text("SPOTIFY MIXER", Rect::new(30.0, 157.0, 132.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
-        let mute = Rect::new(28.0, 175.0, 22.0, 22.0);
-        hits.push(Hit { r: mute, act: Act::SpotifyMute });
-        if hot(a, Act::SpotifyMute) {
-            g.fill_rrect(mute, 7.0, Color::white(0.10 * ca));
-        }
-        g.icon(if v < 0.001 { '\u{E74F}' } else { '\u{E767}' }, mute, &f.icon14, T2.fade(ca));
-        let vr = Rect::new(56.0, 180.0, 83.0, 12.0);
-        slider(a, vr, v, Act::SpotifyVolume, a.accent, ca, hits, true);
-        g.text(&format!("{}%", (v * 100.0).round() as u32), Rect::new(141.0, 177.0, 27.0, 17.0), &f.tiny, T2.fade(ca), Align::Right);
-    }
-
-    let tx = 166.0;
-    let tw = EXP_W - tx - 52.0;
-    g.text("NOW PLAYING", Rect::new(tx, 28.0, tw, 16.0), &f.tiny, a.accent.fade(ca), Align::Left);
+    let tx = 126.0;
+    let tw = 210.0;
+    g.text("NOW PLAYING", Rect::new(tx, 25.0, tw, 16.0), &f.tiny, accent.fade(ca), Align::Left);
     let title = if m.title.is_empty() {
         "Unknown title"
     } else {
@@ -1477,8 +1446,8 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     };
     g.text(
         title,
-        Rect::new(tx, 48.0, tw, 28.0),
-        &f.title,
+        Rect::new(tx, 44.0, tw, 27.0),
+        &f.body,
         T1.fade(ca),
         Align::Left,
     );
@@ -1490,8 +1459,8 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     };
     g.text(
         sub,
-        Rect::new(tx, 77.0, tw, 21.0),
-        &f.body,
+        Rect::new(tx, 70.0, tw, 20.0),
+        &f.small,
         (if loading.is_some() { a.accent } else { T2 }).fade(ca),
         Align::Left,
     );
@@ -1499,9 +1468,59 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     // That is not useful information to show in a polished player.
     let friendly_app = !m.app.is_empty()
         && !(m.app.len() >= 12 && m.app.chars().all(|c| c.is_ascii_hexdigit()));
-    g.text(if friendly_app { &m.app } else { "MEDIA SESSION" }, Rect::new(tx, 100.0, 212.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
+    g.text(if friendly_app { &m.app } else { "MEDIA SESSION" }, Rect::new(tx, 91.0, tw, 15.0), &f.tiny, T3.fade(ca), Align::Left);
 
-    // progress
+    // Transport stays compact and grouped directly below the track details.
+    let prev = Rect::new(155.0, 112.0, 40.0, 40.0);
+    let play = Rect::new(207.0, 108.0, 48.0, 48.0);
+    let next = Rect::new(267.0, 112.0, 40.0, 40.0);
+    hits.push(Hit { r: prev, act: Act::Prev });
+    hits.push(Hit { r: play, act: Act::PlayPause });
+    hits.push(Hit { r: next, act: Act::Next });
+    for (r, act, glyph, ok) in [(prev, Act::Prev, '\u{E892}', m.can_prev), (next, Act::Next, '\u{E893}', m.can_next)] {
+        if hot(a, act) { g.fill_rrect(r, 18.0, Color::white(0.10 * ca)); }
+        g.icon(glyph, r, &f.icon18, (if ok { T1 } else { T3 }).fade(ca));
+    }
+    g.fill_circle(play.cx(), play.cy(), 22.0, Color::white(0.91 * ca));
+    g.stroke_rrect(Rect::new(play.cx() - 22.0, play.cy() - 22.0, 44.0, 44.0), 22.0, accent.fade(0.34 * ca), 1.0);
+    g.icon(if m.playing { '\u{E769}' } else { '\u{E768}' }, play, &f.icon18, Color(0.04, 0.04, 0.06, ca));
+
+    // Lyrics are part of the player surface, in the position shown in the
+    // user's reference. The full lyric page remains one tap away.
+    let lyric_pane = Rect::new(353.0, 24.0, 214.0, 139.0);
+    g.fill_rrect(lyric_pane, 16.0, Color(0.0, 0.0, 0.0, 0.16 * ca));
+    g.fill_rrect(lyric_pane, 16.0, accent.fade(0.045 * ca));
+    g.stroke_rrect(lyric_pane, 16.0, Color::white(0.12 * ca), 0.8);
+    g.fill_rrect(Rect::new(364.0, 35.0, 2.0, 20.0), 1.0, accent.fade(0.78 * ca));
+    g.text("LYRICS", Rect::new(373.0, 30.0, 100.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
+    let lyrics_button = Rect::new(494.0, 27.0, 61.0, 23.0);
+    hits.push(Hit { r: lyrics_button, act: Act::LyricsToggle });
+    g.fill_rrect(lyrics_button, 10.0, (if hot(a, Act::LyricsToggle) { accent.fade(0.22) } else { Color::white(0.07) }).fade(ca));
+    g.text("Full lyrics", lyrics_button, &f.tiny, accent.fade(ca), Align::Center);
+
+    let lyric_data = crate::lyrics::snapshot()
+        .filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist));
+    if let Some(data) = lyric_data {
+        if data.loading || data.lines.is_empty() {
+            g.text(&data.message, Rect::new(371.0, 62.0, 177.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+        } else {
+            let (pos, _) = m.progress(sys::filetime_now());
+            let current = if data.synced {
+                data.lines.iter().rposition(|line| line.at.is_some_and(|at| at <= pos)).unwrap_or(0)
+            } else { 0 };
+            if current > 0 {
+                g.text(&data.lines[current - 1].text, Rect::new(374.0, 59.0, 174.0, 20.0), &f.tiny, T3.fade(0.68 * ca), Align::Center);
+            }
+            g.text(&data.lines[current].text, Rect::new(370.0, 81.0, 182.0, 36.0), &f.small, T1.fade(ca), Align::Center);
+            if let Some(next_line) = data.lines.get(current + 1) {
+                g.text(&next_line.text, Rect::new(374.0, 122.0, 174.0, 20.0), &f.tiny, T3.fade(0.75 * ca), Align::Center);
+            }
+        }
+    } else {
+        g.text("Lyrics appear here when available", Rect::new(371.0, 62.0, 177.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+    }
+
+    // A single fine waveform line spans both halves of the player.
     let (pos, dur) = if loading.is_some() { (0.0, 0.0) } else { m.progress(sys::filetime_now()) };
     let frac = match a.seek_frac {
         Some(fr) => fr,
@@ -1513,11 +1532,11 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     } else {
         pos
     };
-    let bar = Rect::new(tx, 122.0, EXP_W - tx - 39.0, 18.0);
+    let bar = Rect::new(29.0, 176.0, EXP_W - 58.0, 14.0);
     wave_seek(a, bar, frac, ca, hits, dur > 0.0 && m.can_seek);
     g.text(
         &fmt_time(shown),
-        Rect::new(tx, 140.0, 70.0, 16.0),
+        Rect::new(29.0, 192.0, 70.0, 15.0),
         &f.tiny,
         T3.fade(ca),
         Align::Left,
@@ -1525,42 +1544,24 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     if dur > 0.0 {
         g.text(
             &fmt_time(dur),
-            Rect::new(bar.x + bar.w - 70.0, 140.0, 70.0, 16.0),
+            Rect::new(bar.x + bar.w - 70.0, 192.0, 70.0, 15.0),
             &f.tiny,
             T3.fade(ca),
             Align::Right,
         );
     }
 
-    // transport
-    let cx = tx + (EXP_W - tx - 39.0) / 2.0;
-    let cy = 175.0;
-    let prev = Rect::new(cx - 92.0, cy - 20.0, 40.0, 40.0);
-    let play = Rect::new(cx - 26.0, cy - 26.0, 52.0, 52.0);
-    let next = Rect::new(cx + 52.0, cy - 20.0, 40.0, 40.0);
-    hits.push(Hit {
-        r: prev,
-        act: Act::Prev,
-    });
-    hits.push(Hit {
-        r: play,
-        act: Act::PlayPause,
-    });
-    hits.push(Hit {
-        r: next,
-        act: Act::Next,
-    });
-    for (r, act, glyph, ok) in [(prev, Act::Prev, '\u{E892}', m.can_prev), (next, Act::Next, '\u{E893}', m.can_next)] {
-        if hot(a, act) {
-            g.fill_rrect(r, 20.0, Color::white(0.10 * ca));
-        }
-        g.icon(glyph, r, &f.icon18, (if ok { T1 } else { T3 }).fade(ca));
+    if let Some(v) = a.spotify_vol {
+        let mute = Rect::new(29.0, 210.0, 20.0, 20.0);
+        hits.push(Hit { r: mute, act: Act::SpotifyMute });
+        g.icon(if v < 0.001 { '\u{E74F}' } else { '\u{E767}' }, mute, &f.icon14, T2.fade(ca));
+        slider(a, Rect::new(56.0, 213.0, 86.0, 14.0), v, Act::SpotifyVolume, accent, ca, hits, true);
+        g.text("SPOTIFY", Rect::new(147.0, 210.0, 70.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
     }
-    let big = if hot(a, Act::PlayPause) { 1.0 } else { 0.92 };
-    g.fill_circle(play.cx(), play.cy(), 24.0, Color(0.93, 0.91, 0.99, big * ca));
-    g.stroke_rrect(Rect::new(play.cx() - 24.0, play.cy() - 24.0, 48.0, 48.0), 24.0, a.accent.fade(0.17 * ca), 1.2);
-    let glyph = if m.playing { '\u{E769}' } else { '\u{E768}' };
-    g.icon(glyph, play, &f.icon22, Color(0.0, 0.0, 0.0, ca));
+    let queue_button = Rect::new(EXP_W - 119.0, 207.0, 88.0, 25.0);
+    hits.push(Hit { r: queue_button, act: Act::AssistantOpen });
+    glass_card_k(a, queue_button, 12.0, ca, hot_k(a, Act::AssistantOpen), accent);
+    g.text("+ Queue", queue_button, &f.small, accent.fade(ca), Align::Center);
 }
 
 /// Readable lyric lines with a permanently visible seek bar and transport.

@@ -117,7 +117,7 @@ pub fn search(client_id: &str, query: &str) -> std::result::Result<Vec<Track>, S
 $ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'
 $data = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{payload}')) | ConvertFrom-Json
 try {{
-    $secure = ConvertTo-SecureString (Get-Content -Raw -LiteralPath (Join-Path $env:APPDATA 'Nock\spotify_refresh.dpapi'))
+    $secure = ConvertTo-SecureString ((Get-Content -Raw -LiteralPath (Join-Path $env:APPDATA 'Nock\spotify_refresh.dpapi')).Trim())
     $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {{ $refresh = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) }} finally {{ [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }}
     $token = Invoke-RestMethod -Method Post -Uri 'https://accounts.spotify.com/api/token' -TimeoutSec 15 -ContentType 'application/x-www-form-urlencoded' -Body @{{ client_id=$data.client_id; grant_type='refresh_token'; refresh_token=$refresh }}
@@ -159,7 +159,7 @@ pub fn queue(client_id: &str, uri: &str) -> std::result::Result<(), String> {
 $ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'
 $data = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{payload}')) | ConvertFrom-Json
 try {{
-    $secure = ConvertTo-SecureString (Get-Content -Raw -LiteralPath (Join-Path $env:APPDATA 'Nock\spotify_refresh.dpapi'))
+    $secure = ConvertTo-SecureString ((Get-Content -Raw -LiteralPath (Join-Path $env:APPDATA 'Nock\spotify_refresh.dpapi')).Trim())
     $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
     try {{ $refresh = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr) }} finally {{ [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }}
     $token = Invoke-RestMethod -Method Post -Uri 'https://accounts.spotify.com/api/token' -TimeoutSec 15 -ContentType 'application/x-www-form-urlencoded' -Body @{{ client_id=$data.client_id; grant_type='refresh_token'; refresh_token=$refresh }}
