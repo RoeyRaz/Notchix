@@ -23,12 +23,22 @@ trait D2d<T> {
 }
 impl D2d<D2D_RECT_F> for Rect {
     fn d2d(&self) -> D2D_RECT_F {
-        D2D_RECT_F { left: self.x, top: self.y, right: self.x + self.w, bottom: self.y + self.h }
+        D2D_RECT_F {
+            left: self.x,
+            top: self.y,
+            right: self.x + self.w,
+            bottom: self.y + self.h,
+        }
     }
 }
 impl D2d<D2D1_COLOR_F> for Color {
     fn d2d(&self) -> D2D1_COLOR_F {
-        D2D1_COLOR_F { r: self.0, g: self.1, b: self.2, a: self.3 }
+        D2D1_COLOR_F {
+            r: self.0,
+            g: self.1,
+            b: self.2,
+            a: self.3,
+        }
     }
 }
 
@@ -133,7 +143,15 @@ impl Gfx {
             bmi.bmiHeader.biBitCount = 32;
             bmi.bmiHeader.biCompression = BI_RGB.0;
             let mut buf = vec![0u8; (w * h * 4) as usize];
-            GetDIBits(self.memdc, self.dib, 0, h as u32, Some(buf.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
+            GetDIBits(
+                self.memdc,
+                self.dib,
+                0,
+                h as u32,
+                Some(buf.as_mut_ptr() as *mut _),
+                &mut bmi,
+                DIB_RGB_COLORS,
+            );
             (w, h, buf)
         }
     }
@@ -201,7 +219,17 @@ impl Gfx {
             AlphaFormat: AC_SRC_ALPHA as u8,
         };
         unsafe {
-            let _ = UpdateLayeredWindow(hwnd, None, None, None, None, None, COLORREF(0), Some(&blend), ULW_ALPHA);
+            let _ = UpdateLayeredWindow(
+                hwnd,
+                None,
+                None,
+                None,
+                None,
+                None,
+                COLORREF(0),
+                Some(&blend),
+                ULW_ALPHA,
+            );
         }
     }
 
@@ -237,10 +265,15 @@ impl Gfx {
             return;
         }
         unsafe {
-            let Ok(geo) = self.d2d.CreatePathGeometry() else { return };
+            let Ok(geo) = self.d2d.CreatePathGeometry() else {
+                return;
+            };
             let Ok(sink) = geo.Open() else { return };
             sink.BeginFigure(
-                windows_numerics::Vector2 { X: pts[0].0, Y: pts[0].1 },
+                windows_numerics::Vector2 {
+                    X: pts[0].0,
+                    Y: pts[0].1,
+                },
                 D2D1_FIGURE_BEGIN_FILLED,
             );
             let rest: Vec<windows_numerics::Vector2> = pts[1..]
@@ -303,6 +336,28 @@ impl Gfx {
         }
     }
 
+    /// Measure text in DIPs using the same font metrics used by DirectWrite.
+    pub fn text_width(&self, s: &str, f: &IDWriteTextFormat) -> f32 {
+        let _ = f;
+        // Lyrics are the only caller; a small glyph-width estimate avoids
+        // allocating DirectWrite layouts during every animated frame.
+        s.chars()
+            .map(|ch| {
+                if ch.is_whitespace()
+                    || matches!(ch, 'i' | 'l' | '!' | '.' | ',' | ':' | ';' | '\'' | '|')
+                {
+                    4.5
+                } else if matches!(ch, 'm' | 'w' | 'M' | 'W' | '@' | '%' | '&') {
+                    14.0
+                } else if ch as u32 >= 0x2E80 {
+                    18.0
+                } else {
+                    9.0
+                }
+            })
+            .sum()
+    }
+
     /// Draw a glyph from the icon font, centred in `r`.
     pub fn icon(&self, glyph: char, r: Rect, f: &IDWriteTextFormat, c: Color) {
         let mut buf = [0u8; 4];
@@ -344,10 +399,19 @@ impl Gfx {
 
     /// Map a captured screen image to the whole window, but clip its paint to
     /// the rounded island. This keeps background objects in their true place.
-    pub fn draw_bitmap_mapped(&self, bmp: &ID2D1Bitmap, full: Rect, clip: Rect, rad: f32, alpha: f32) {
+    pub fn draw_bitmap_mapped(
+        &self,
+        bmp: &ID2D1Bitmap,
+        full: Rect,
+        clip: Rect,
+        rad: f32,
+        alpha: f32,
+    ) {
         unsafe {
             let size = bmp.GetSize();
-            if size.width <= 0.0 || size.height <= 0.0 { return; }
+            if size.width <= 0.0 || size.height <= 0.0 {
+                return;
+            }
             let props = D2D1_BITMAP_BRUSH_PROPERTIES {
                 extendModeX: D2D1_EXTEND_MODE_CLAMP,
                 extendModeY: D2D1_EXTEND_MODE_CLAMP,
@@ -355,14 +419,22 @@ impl Gfx {
             };
             if let Ok(bb) = self.rt.CreateBitmapBrush(bmp, Some(&props), None) {
                 bb.SetTransform(&Matrix3x2 {
-                    M11: full.w / size.width, M12: 0.0,
-                    M21: 0.0, M22: full.h / size.height,
-                    M31: full.x, M32: full.y,
+                    M11: full.w / size.width,
+                    M12: 0.0,
+                    M21: 0.0,
+                    M22: full.h / size.height,
+                    M31: full.x,
+                    M32: full.y,
                 });
                 bb.SetOpacity(alpha.clamp(0.0, 1.0));
-                self.rt.FillRoundedRectangle(&D2D1_ROUNDED_RECT {
-                    rect: clip.d2d(), radiusX: rad, radiusY: rad,
-                }, &bb);
+                self.rt.FillRoundedRectangle(
+                    &D2D1_ROUNDED_RECT {
+                        rect: clip.d2d(),
+                        radiusX: rad,
+                        radiusY: rad,
+                    },
+                    &bb,
+                );
             }
         }
     }
@@ -394,13 +466,30 @@ impl Gfx {
 
     /// Run `f` with everything it draws moved by (dx, dy).
     pub fn shifted(&self, dx: f32, dy: f32, f: impl FnOnce()) {
-        self.with_transform(Matrix3x2 { M11: 1.0, M12: 0.0, M21: 0.0, M22: 1.0, M31: dx, M32: dy }, f);
+        self.with_transform(
+            Matrix3x2 {
+                M11: 1.0,
+                M12: 0.0,
+                M21: 0.0,
+                M22: 1.0,
+                M31: dx,
+                M32: dy,
+            },
+            f,
+        );
     }
 
     /// Run `f` with everything it draws scaled by (sx, sy) about (cx, cy).
     pub fn scaled(&self, cx: f32, cy: f32, sx: f32, sy: f32, f: impl FnOnce()) {
         self.with_transform(
-            Matrix3x2 { M11: sx, M12: 0.0, M21: 0.0, M22: sy, M31: cx - cx * sx, M32: cy - cy * sy },
+            Matrix3x2 {
+                M11: sx,
+                M12: 0.0,
+                M21: 0.0,
+                M22: sy,
+                M31: cx - cx * sx,
+                M32: cy - cy * sy,
+            },
             f,
         );
     }
@@ -493,10 +582,22 @@ impl Gfx {
             return Err(Error::from(E_INVALIDARG));
         }
         unsafe {
-            let src = self.wic.CreateBitmapFromMemory(width, height, &GUID_WICPixelFormat32bppBGRA, width * 4, pixels)?;
+            let src = self.wic.CreateBitmapFromMemory(
+                width,
+                height,
+                &GUID_WICPixelFormat32bppBGRA,
+                width * 4,
+                pixels,
+            )?;
             let conv = self.wic.CreateFormatConverter()?;
-            conv.Initialize(&src, &GUID_WICPixelFormat32bppPBGRA,
-                WICBitmapDitherTypeNone, None, 0.0, WICBitmapPaletteTypeCustom)?;
+            conv.Initialize(
+                &src,
+                &GUID_WICPixelFormat32bppPBGRA,
+                WICBitmapDitherTypeNone,
+                None,
+                0.0,
+                WICBitmapPaletteTypeCustom,
+            )?;
             self.rt.CreateBitmapFromWicBitmap(&conv, None)
         }
     }
@@ -544,7 +645,11 @@ fn make_fonts(dw: &IDWriteFactory) -> Result<Fonts> {
                 }
                 Ok(f)
             };
-        let ui = if font_exists(dw, w!("Segoe UI Variable")) { w!("Segoe UI Variable") } else { w!("Segoe UI") };
+        let ui = if font_exists(dw, w!("Segoe UI Variable")) {
+            w!("Segoe UI Variable")
+        } else {
+            w!("Segoe UI")
+        };
         Ok(Fonts {
             title: text(ui, DWRITE_FONT_WEIGHT_SEMI_BOLD, 18.0)?,
             body: text(ui, DWRITE_FONT_WEIGHT_MEDIUM, 15.0)?,

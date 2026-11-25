@@ -11,10 +11,10 @@ const BLACK: Color = Color(0.0, 0.0, 0.0, 1.0);
 const T1: Color = Color::white(0.97);
 const T2: Color = Color::white(0.79);
 const T3: Color = Color::white(0.56);
-// Restrained, translucent surfaces inspired by the NotchPixel glass and
-// graphite themes. They stay crisp with or without DWM glass support.
-const SURF: Color = Color::white(0.075);
-const HOVER: Color = Color::white(0.145);
+// Smoked graphite glass. Keep controls translucent and use a thin white
+// highlight rather than solid grey cards.
+const SURF: Color = Color(0.58, 0.62, 0.73, 0.075);
+const HOVER: Color = Color(0.86, 0.89, 0.98, 0.15);
 
 // Neutral material; album art colours text and controls, not the surfaces.
 fn glass_card(a: &App, r: Rect, radius: f32, ca: f32, hovered: bool) {
@@ -24,29 +24,62 @@ fn glass_card(a: &App, r: Rect, radius: f32, ca: f32, hovered: bool) {
 fn glass_card_k(a: &App, r: Rect, radius: f32, ca: f32, hover: f32, tint: Color) {
     let g = &a.gfx;
     let k = hover.clamp(0.0, 1.0);
-    g.fill_rrect(r, radius, Color(0.10, 0.11, 0.14, (0.41 + 0.08 * k) * ca));
-    if k > 0.001 { g.fill_rrect(r, radius, tint.fade(0.12 * k * ca)); }
-    g.fill_rrect(r, radius, Color::white((0.048 + 0.032 * k) * ca));
-    g.stroke_rrect(r, radius, Color(0.0, 0.0, 0.0, 0.11 * ca), 0.75);
-    g.stroke_rrect(Rect::new(r.x + 0.6, r.y + 0.6, (r.w - 1.2).max(0.0), (r.h - 1.2).max(0.0)), radius,
-        Color::white((0.082 + 0.13 * k) * ca), 0.8);
+    g.fill_rrect(
+        r,
+        radius,
+        Color(0.018, 0.021, 0.032, (0.47 + 0.05 * k) * ca),
+    );
+    if k > 0.001 {
+        g.fill_rrect(r, radius, tint.fade(0.08 * k * ca));
+    }
+    g.fill_rrect(r, radius, Color::white((0.018 + 0.014 * k) * ca));
+    g.stroke_rrect(r, radius, Color(0.0, 0.0, 0.0, 0.18 * ca), 0.75);
+    g.stroke_rrect(
+        Rect::new(
+            r.x + 0.6,
+            r.y + 0.6,
+            (r.w - 1.2).max(0.0),
+            (r.h - 1.2).max(0.0),
+        ),
+        radius,
+        Color::white((0.13 + 0.12 * k) * ca),
+        0.9,
+    );
     if r.h >= 22.0 && r.w > radius * 2.0 {
-        g.line((r.x + radius * 0.78, r.y + 1.1), (r.x + r.w - radius * 0.78, r.y + 1.1),
-            0.7, Color::white((0.075 + 0.075 * k) * ca));
+        g.line(
+            (r.x + radius * 0.78, r.y + 1.1),
+            (r.x + r.w - radius * 0.78, r.y + 1.1),
+            0.8,
+            Color::white((0.14 + 0.08 * k) * ca),
+        );
     }
     if k > 0.01 {
-        g.stroke_rrect(Rect::new(r.x + 0.5, r.y + 0.5, (r.w - 1.0).max(0.0), (r.h - 1.0).max(0.0)), radius,
-            tint.fade(0.34 * k * ca), 0.9);
+        g.stroke_rrect(
+            Rect::new(
+                r.x + 0.5,
+                r.y + 0.5,
+                (r.w - 1.0).max(0.0),
+                (r.h - 1.0).max(0.0),
+            ),
+            radius,
+            tint.fade(0.34 * k * ca),
+            0.9,
+        );
     }
 }
 
 // A calm purple when no cover is available; live artwork remains the accent.
 // The clock is already read by the UI, so this adds no timer or wallpaper scan.
 fn glass_accent(a: &App) -> Color {
-    if a.art.is_some() { return a.accent; }
+    if a.art.is_some() {
+        return a.accent;
+    }
     let (_, _, _, _, hour, _, _, _) = sys::local_time();
-    if (7..18).contains(&hour) { Color(0.75, 0.62, 0.87, 1.0) }
-    else { Color(0.58, 0.50, 0.92, 1.0) }
+    if (7..18).contains(&hour) {
+        Color(0.75, 0.62, 0.87, 1.0)
+    } else {
+        Color(0.58, 0.50, 0.92, 1.0)
+    }
 }
 
 fn page_accent(a: &App, page: Page) -> Color {
@@ -69,29 +102,54 @@ pub const CONTENT_Y: f32 = 70.0;
 
 fn notification_tint(app: &str) -> Color {
     let name = app.to_ascii_lowercase();
-    if name.contains("whatsapp") { Color(0.13, 0.82, 0.48, 1.0) }
-    else if name.contains("discord") { Color(0.50, 0.53, 1.0, 1.0) }
-    else if name.contains("telegram") { Color(0.28, 0.69, 0.98, 1.0) }
-    else if name.contains("spotify") { Color(0.24, 0.85, 0.48, 1.0) }
-    else if name.contains("teams") { Color(0.61, 0.52, 0.96, 1.0) }
-    else if name.contains("slack") { Color(0.91, 0.58, 0.77, 1.0) }
-    else if name.contains("chrome") || name.contains("edge") { Color(0.39, 0.76, 0.97, 1.0) }
-    else if name.contains("calendar") { Color(0.98, 0.68, 0.41, 1.0) }
-    else if name.contains("steam") || name.contains("game") { Color(0.44, 0.72, 0.98, 1.0) }
-    else if name.contains("settings") || name.contains("system") { Color(0.67, 0.72, 0.82, 1.0) }
-    else if name.contains("outlook") || name.contains("mail") { Color(0.38, 0.67, 1.0, 1.0) }
-    else { Color(0.82, 0.77, 1.0, 1.0) }
+    if name.contains("whatsapp") {
+        Color(0.13, 0.82, 0.48, 1.0)
+    } else if name.contains("discord") {
+        Color(0.50, 0.53, 1.0, 1.0)
+    } else if name.contains("telegram") {
+        Color(0.28, 0.69, 0.98, 1.0)
+    } else if name.contains("spotify") {
+        Color(0.24, 0.85, 0.48, 1.0)
+    } else if name.contains("teams") {
+        Color(0.61, 0.52, 0.96, 1.0)
+    } else if name.contains("slack") {
+        Color(0.91, 0.58, 0.77, 1.0)
+    } else if name.contains("chrome") || name.contains("edge") {
+        Color(0.39, 0.76, 0.97, 1.0)
+    } else if name.contains("calendar") {
+        Color(0.98, 0.68, 0.41, 1.0)
+    } else if name.contains("steam") || name.contains("game") {
+        Color(0.44, 0.72, 0.98, 1.0)
+    } else if name.contains("settings") || name.contains("system") {
+        Color(0.67, 0.72, 0.82, 1.0)
+    } else if name.contains("outlook") || name.contains("mail") {
+        Color(0.38, 0.67, 1.0, 1.0)
+    } else {
+        Color(0.82, 0.77, 1.0, 1.0)
+    }
 }
 
 fn notification_glyph(app: &str) -> char {
     let name = app.to_ascii_lowercase();
-    if name.contains("whatsapp") || name.contains("telegram") || name.contains("discord") || name.contains("teams") { '\u{E8F2}' }
-    else if name.contains("spotify") { '\u{E8D6}' }
-    else if name.contains("calendar") { '\u{E787}' }
-    else if name.contains("outlook") || name.contains("mail") { '\u{E715}' }
-    else if name.contains("settings") { '\u{E713}' }
-    else if name.contains("steam") || name.contains("game") { '\u{E7FC}' }
-    else { '\u{E7F4}' }
+    if name.contains("whatsapp")
+        || name.contains("telegram")
+        || name.contains("discord")
+        || name.contains("teams")
+    {
+        '\u{E8F2}'
+    } else if name.contains("spotify") {
+        '\u{E8D6}'
+    } else if name.contains("calendar") {
+        '\u{E787}'
+    } else if name.contains("outlook") || name.contains("mail") {
+        '\u{E715}'
+    } else if name.contains("settings") {
+        '\u{E713}'
+    } else if name.contains("steam") || name.contains("game") {
+        '\u{E7FC}'
+    } else {
+        '\u{E7F4}'
+    }
 }
 
 fn draw_notice_icon(a: &App, name: &str, r: Rect, ca: f32) {
@@ -99,26 +157,51 @@ fn draw_notice_icon(a: &App, name: &str, r: Rect, ca: f32) {
     a.gfx.fill_rrect(r, 11.0, tint.fade(0.14 * ca));
     let lower = name.to_ascii_lowercase();
     if lower.contains("whatsapp") {
-        a.gfx.fill_circle(r.x + r.w / 2.0, r.y + r.h / 2.0, r.w.min(r.h) * 0.34, tint.fade(0.86 * ca));
-        a.gfx.icon('\u{E717}', r, &a.gfx.fonts.icon14, Color::white(ca));
+        a.gfx.fill_circle(
+            r.x + r.w / 2.0,
+            r.y + r.h / 2.0,
+            r.w.min(r.h) * 0.34,
+            tint.fade(0.86 * ca),
+        );
+        a.gfx
+            .icon('\u{E717}', r, &a.gfx.fonts.icon14, Color::white(ca));
         return;
     }
     // Reuse genuine shortcut icons whenever the user's Apps list has the
     // corresponding application. The symbolic icon is the safe fallback.
-    if let Some((i, _)) = a.apps.iter().enumerate().find(|(_, entry)| {
-        entry.name.eq_ignore_ascii_case(name)
-    }) {
+    if let Some((i, _)) = a
+        .apps
+        .iter()
+        .enumerate()
+        .find(|(_, entry)| entry.name.eq_ignore_ascii_case(name))
+    {
         if let Some(Some(bmp)) = a.app_icons.get(i) {
-            a.gfx.draw_bitmap(bmp, Rect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0), 7.0, ca);
+            a.gfx.draw_bitmap(
+                bmp,
+                Rect::new(r.x + 3.0, r.y + 3.0, r.w - 6.0, r.h - 6.0),
+                7.0,
+                ca,
+            );
             return;
         }
     }
     if lower.contains("discord") {
-        a.gfx.fill_circle(r.x + r.w / 2.0, r.y + r.h / 2.0, r.w.min(r.h) * 0.34, tint.fade(0.86 * ca));
-        a.gfx.text("D", r, &a.gfx.fonts.body, Color::white(ca), Align::Center);
+        a.gfx.fill_circle(
+            r.x + r.w / 2.0,
+            r.y + r.h / 2.0,
+            r.w.min(r.h) * 0.34,
+            tint.fade(0.86 * ca),
+        );
+        a.gfx
+            .text("D", r, &a.gfx.fonts.body, Color::white(ca), Align::Center);
         return;
     }
-    a.gfx.icon(notification_glyph(name), r, &a.gfx.fonts.icon14, tint.fade(ca));
+    a.gfx.icon(
+        notification_glyph(name),
+        r,
+        &a.gfx.fonts.icon14,
+        tint.fade(ca),
+    );
 }
 
 /// Travel only along the visible edge of a top-attached notch. The top is
@@ -126,25 +209,37 @@ fn draw_notice_icon(a: &App, name: &str, r: Rect, ca: f32) {
 /// the silhouette and cut across the contents.
 fn rim_point(p: f32, w: f32, h: f32) -> (f32, f32) {
     let inset = 2.0;
-    if p >= 1.0 { return (w - inset, 0.0); }
+    if p >= 1.0 {
+        return (w - inset, 0.0);
+    }
     let radius = (h * 0.43).min(21.0).min((w - 2.0 * inset) * 0.25);
     let side = (h - inset - radius).max(0.0);
     let arc = std::f32::consts::FRAC_PI_2 * radius;
     let bottom = (w - 2.0 * inset - 2.0 * radius).max(0.0);
     let length = 2.0 * side + 2.0 * arc + bottom;
     let mut d = p.clamp(0.0, 1.0) * length;
-    if d <= side { return (inset, d); }
+    if d <= side {
+        return (inset, d);
+    }
     d -= side;
     if d <= arc {
         let angle = std::f32::consts::PI - d / radius;
-        return (inset + radius + radius * angle.cos(), h - inset - radius + radius * angle.sin());
+        return (
+            inset + radius + radius * angle.cos(),
+            h - inset - radius + radius * angle.sin(),
+        );
     }
     d -= arc;
-    if d <= bottom { return (inset + radius + d, h - inset); }
+    if d <= bottom {
+        return (inset + radius + d, h - inset);
+    }
     d -= bottom;
     if d <= arc {
         let angle = std::f32::consts::FRAC_PI_2 - d / radius;
-        return (w - inset - radius + radius * angle.cos(), h - inset - radius + radius * angle.sin());
+        return (
+            w - inset - radius + radius * angle.cos(),
+            h - inset - radius + radius * angle.sin(),
+        );
     }
     d -= arc;
     (w - inset, (h - inset - radius - d).max(0.0))
@@ -186,16 +281,27 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
     let day = (7..18).contains(&hour);
     let live = a.glass && a.live_glass.is_some() && a.glass_bitmap.is_some();
     let base = if a.glass {
-        if live { Color(0.07, 0.075, 0.09, if day { 0.23 } else { 0.28 }) }
-        else if day { Color(0.10, 0.10, 0.11, 0.67) } else { Color(0.07, 0.075, 0.085, 0.73) }
-    } else { Color(0.042, 0.047, 0.050, 1.0) };
+        if live {
+            Color(0.035, 0.035, 0.055, if day { 0.31 } else { 0.37 })
+        } else if day {
+            Color(0.055, 0.055, 0.07, 0.77)
+        } else {
+            Color(0.025, 0.03, 0.055, 0.82)
+        }
+    } else {
+        Color(0.025, 0.028, 0.04, 1.0)
+    };
     if live {
         if let Some(bitmap) = &a.glass_bitmap {
             g.draw_bitmap_mapped(bitmap, Rect::new(0.0, 0.0, w, h), body, rad, 0.95);
         }
     }
     g.fill_rrect(body, rad, base);
-    if a.glass { g.fill_rrect(body, rad, Color::white(if live { 0.052 } else { 0.038 })); }
+    if a.glass {
+        g.fill_rrect(body, rad, Color::white(if live { 0.043 } else { 0.025 }));
+    }
+    // A fixed, inexpensive top reflection gives the silhouette the polished
+    // edge of a glass island without adding blur passes or animated glow.
     if a.glass && t < 0.05 && !a.mstate.has_track() && !a.alerting() {
         // A very small pool of reflected light gives the resting acrylic
         // depth without turning the entire edge into a bright outline.
@@ -203,20 +309,34 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
         for i in 0..24 {
             let p = 0.38 + i as f32 * 0.24 / 24.0;
             let strength = (1.0 - ((i as f32 - 11.5) / 12.0).abs()).max(0.0);
-            g.line(rim_point(p, w, h), rim_point(p + 0.24 / 24.0, w, h), 3.0,
-                accent.fade(0.11 * strength));
+            g.line(
+                rim_point(p, w, h),
+                rim_point(p + 0.24 / 24.0, w, h),
+                3.0,
+                accent.fade(0.11 * strength),
+            );
         }
     }
     if a.glass && t > 0.1 {
         // Neutral smoked glass. Desktop colors and album art provide the
         // personality, not a permanent blue tint on every page.
-        g.fill_rrect(Rect::new(8.0, -rad + 4.0, w - 16.0, h + rad - 12.0), (rad - 2.0).max(4.0), Color::white(0.045 * t));
+        g.fill_rrect(
+            Rect::new(8.0, -rad + 4.0, w - 16.0, h + rad - 12.0),
+            (rad - 2.0).max(4.0),
+            Color::white(0.045 * t),
+        );
     }
     g.stroke_rrect(
         Rect::new(body.x + 0.5, body.y + 0.5, body.w - 1.0, body.h - 1.0),
         rad,
-        Color::white(if live { 0.21 } else { 0.17 }),
-        1.0,
+        Color::white(if live {
+            0.36
+        } else if a.glass {
+            0.39
+        } else {
+            0.50
+        }),
+        1.1,
     );
     g.stroke_rrect(
         Rect::new(body.x + 1.4, body.y + 1.4, body.w - 2.8, body.h - 2.8),
@@ -224,8 +344,6 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
         Color(0.0, 0.0, 0.0, 0.15),
         0.8,
     );
-    g.line((body.x + rad + 8.0, 2.0), (body.x + body.w - rad - 8.0, 2.0), 1.1, Color::white(0.18));
-    g.line((body.x + rad + 28.0, 4.2), (body.x + body.w - rad - 28.0, 4.2), 0.7, Color::white(0.07));
     // Keep the resting rim neutral. Accent is reserved for artwork, actual
     // notifications and interaction, never fixed pink/green edge segments.
     if !a.expanded && t < 0.05 {
@@ -238,8 +356,12 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
             // App-colored glass catches the light, while the dark center
             // keeps notification text legible against any wallpaper.
             g.fill_rrect(body, rad, tint.fade(0.035 * intensity));
-            g.stroke_rrect(Rect::new(body.x + 1.5, body.y + 1.0, body.w - 3.0, body.h - 2.0), rad,
-                tint.fade(0.13 + 0.38 * intensity), 1.25);
+            g.stroke_rrect(
+                Rect::new(body.x + 1.5, body.y + 1.0, body.w - 3.0, body.h - 2.0),
+                rad,
+                tint.fade(0.13 + 0.38 * intensity),
+                1.25,
+            );
             // The highlight traverses the rim only once. A soft tail creates
             // motion without continuously flashing around the monitor.
             if elapsed < 2.2 {
@@ -271,7 +393,11 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
             "Take a break" => (Color(0.12, 0.72, 0.62, 1.0), 0.50),
             _ => (a.accent, 0.25),
         };
-        g.fill_rrect(Rect::new(0.0, -rad, w, h + rad), rad, tint.fade(base + (0.95 - base) * 0.5 * pulse));
+        g.fill_rrect(
+            Rect::new(0.0, -rad, w, h + rad),
+            rad,
+            tint.fade(base + (0.95 - base) * 0.5 * pulse),
+        );
     }
     let c_alpha = (1.0 - t * 3.2).clamp(0.0, 1.0);
     // Wait until the growing shell has room for the panel controls. Height
@@ -292,10 +418,13 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
 }
 
 fn draw_idle_progress(a: &App, w: f32, h: f32, alpha: f32) {
-    if a.expanded || a.system_preview.is_some() { return; }
+    if a.expanded || a.system_preview.is_some() {
+        return;
+    }
     let now = crate::cal::now().0;
-    let progress = crate::cal::EVENTS.lock().ok().and_then(|events|
-        outline_progress(&events, now, &a.mstate, sys::filetime_now(), a.cfg.day_line));
+    let progress = crate::cal::EVENTS.lock().ok().and_then(|events| {
+        outline_progress(&events, now, &a.mstate, sys::filetime_now(), a.cfg.day_line)
+    });
     let Some(progress) = progress else { return };
     let g = &a.gfx;
     let color = glass_accent(a).fade(0.82 * alpha);
@@ -308,19 +437,38 @@ fn draw_idle_progress(a: &App, w: f32, h: f32, alpha: f32) {
     }
 }
 
-fn outline_progress(events: &[crate::cal::Event], now: i64, media: &crate::media::MediaState, now_ft: i64, song_enabled: bool) -> Option<f32> {
-    if let Some((start, end)) = events.iter().filter_map(|event| {
-        let end = event.end?;
-        (!event.all_day && event.start <= now && end > now && end > event.start).then_some((event.start, end))
-    }).min_by_key(|(start, _)| *start) {
+fn outline_progress(
+    events: &[crate::cal::Event],
+    now: i64,
+    media: &crate::media::MediaState,
+    now_ft: i64,
+    song_enabled: bool,
+) -> Option<f32> {
+    if let Some((start, end)) = events
+        .iter()
+        .filter_map(|event| {
+            let end = event.end?;
+            (!event.all_day && event.start <= now && end > now && end > event.start)
+                .then_some((event.start, end))
+        })
+        .min_by_key(|(start, _)| *start)
+    {
         return Some((now - start) as f32 / (end - start) as f32);
     }
-    if song_enabled && media.has_track() { song_progress(media, now_ft) } else { None }
+    if song_enabled && media.has_track() {
+        song_progress(media, now_ft)
+    } else {
+        None
+    }
 }
 
 fn song_progress(media: &crate::media::MediaState, now_ft: i64) -> Option<f32> {
     let (position, duration) = media.progress(now_ft);
-    if duration > 0.0 && position.is_finite() { Some((position / duration).clamp(0.0, 1.0) as f32) } else { None }
+    if duration > 0.0 && position.is_finite() {
+        Some((position / duration).clamp(0.0, 1.0) as f32)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -347,7 +495,13 @@ mod song_progress_tests {
         media.title = "Song".into();
         media.dur_ticks = 100 * 10_000_000;
         media.pos_ticks = 25 * 10_000_000;
-        let event = Event { start: 100, end: Some(200), title: "Meeting".into(), link: None, all_day: false };
+        let event = Event {
+            start: 100,
+            end: Some(200),
+            title: "Meeting".into(),
+            link: None,
+            all_day: false,
+        };
         assert_eq!(outline_progress(&[event], 150, &media, 0, true), Some(0.5));
         assert_eq!(outline_progress(&[], 150, &media, 0, true), Some(0.25));
         assert_eq!(outline_progress(&[], 150, &media, 0, false), None);
@@ -359,7 +513,9 @@ mod song_progress_tests {
 fn draw_privacy_indicators(a: &App, w: f32, alpha: f32) {
     let mic = a.call_since.is_some();
     let cam = a.camera_active;
-    if !mic && !cam { return; }
+    if !mic && !cam {
+        return;
+    }
     let g = &a.gfx;
     let y = 6.0;
     if cam {
@@ -387,7 +543,9 @@ fn draw_confetti(a: &App, w: f32, h: f32, t: f32) {
     let fade = (1.0 - (t - 2.4).max(0.0) / 0.6).clamp(0.0, 1.0);
     for i in 0..40u32 {
         let r = |k: u32| {
-            let mut x = (i + 1).wrapping_mul(2654435761).wrapping_add(k.wrapping_mul(40503));
+            let mut x = (i + 1)
+                .wrapping_mul(2654435761)
+                .wrapping_add(k.wrapping_mul(40503));
             x ^= x >> 15;
             x = x.wrapping_mul(2246822519);
             x ^= x >> 13;
@@ -400,10 +558,13 @@ fn draw_confetti(a: &App, w: f32, h: f32, t: f32) {
         }
         let spin = (t * (6.0 + 8.0 * r(4)) + r(5) * 6.0).sin().abs();
         let c = COLORS[(r(6) * 6.0) as usize % 6];
-        g.fill_rrect(Rect::new(x, y, 2.0 + 3.0 * spin, 4.0 - 2.0 * spin), 0.5, c.fade(fade));
+        g.fill_rrect(
+            Rect::new(x, y, 2.0 + 3.0 * spin, 4.0 - 2.0 * spin),
+            0.5,
+            c.fade(fade),
+        );
     }
 }
-
 
 // ------------------------------------------------------------- collapsed ----
 
@@ -418,17 +579,61 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
         if a.alert_msg == "Volume" || a.alert_msg == "Brightness" {
             let level = a.osd_level.unwrap_or(0).min(100);
             let bright = a.alert_msg == "Brightness";
-            g.icon(if bright { '\u{E706}' } else if a.osd_muted || level == 0 { '\u{E74F}' } else { '\u{E767}' }, Rect::new(13.0, 0.0, 24.0, ch), &f.icon14, white);
+            g.icon(
+                if bright {
+                    '\u{E706}'
+                } else if a.osd_muted || level == 0 {
+                    '\u{E74F}'
+                } else {
+                    '\u{E767}'
+                },
+                Rect::new(13.0, 0.0, 24.0, ch),
+                &f.icon14,
+                white,
+            );
             let track = Rect::new(44.0, ch / 2.0 - 3.0, w - 103.0, 6.0);
             g.fill_rrect(track, 3.0, Color::white(0.22 * ca));
-            g.fill_rrect(Rect::new(track.x, track.y, track.w * if !bright && a.osd_muted { 0.0 } else { level as f32 / 100.0 }, track.h), 3.0, a.accent.fade(ca));
-            g.text(if !bright && a.osd_muted { "Mute".to_string() } else { format!("{level}%") }.as_str(), Rect::new(w - 49.0, 0.0, 43.0, ch), &f.small, white, Align::Right);
+            g.fill_rrect(
+                Rect::new(
+                    track.x,
+                    track.y,
+                    track.w
+                        * if !bright && a.osd_muted {
+                            0.0
+                        } else {
+                            level as f32 / 100.0
+                        },
+                    track.h,
+                ),
+                3.0,
+                a.accent.fade(ca),
+            );
+            g.text(
+                if !bright && a.osd_muted {
+                    "Mute".to_string()
+                } else {
+                    format!("{level}%")
+                }
+                .as_str(),
+                Rect::new(w - 49.0, 0.0, 43.0, ch),
+                &f.small,
+                white,
+                Align::Right,
+            );
             return;
         }
         let mut label = match (a.alert_msg, a.alert_start) {
             ("Meeting", Some(start)) if !a.alert_label.is_empty() => {
                 let mins = (start - crate::cal::now().0 + 59).div_euclid(60);
-                format!("{} {}", a.alert_label, if mins > 0 { format!("{mins}m") } else { "now".to_string() })
+                format!(
+                    "{} {}",
+                    a.alert_label,
+                    if mins > 0 {
+                        format!("{mins}m")
+                    } else {
+                        "now".to_string()
+                    }
+                )
             }
             _ => a.alert_msg.to_string(),
         };
@@ -439,40 +644,85 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
             g.fill_circle(cx, cy, 6.0, Color(sw.0, sw.1, sw.2, ca));
         } else if a.alert_msg == "Battery low" {
             col = amber;
-            if let Some(s) = sys::battery_info().filter(|b| !b.plugged).and_then(|b| b.secs_left) {
-                label = format!("Battery low {}", if s >= 3600 { format!("{}h{:02}m", s / 3600, s % 3600 / 60) } else { format!("{}m", s / 60) });
+            if let Some(s) = sys::battery_info()
+                .filter(|b| !b.plugged)
+                .and_then(|b| b.secs_left)
+            {
+                label = format!(
+                    "Battery low {}",
+                    if s >= 3600 {
+                        format!("{}h{:02}m", s / 3600, s % 3600 / 60)
+                    } else {
+                        format!("{}m", s / 60)
+                    }
+                );
             }
-            g.icon('\u{E850}', Rect::new(w / 2.0 - 66.0, 0.0, 20.0, ch), &f.icon14, amber);
+            g.icon(
+                '\u{E850}',
+                Rect::new(w / 2.0 - 66.0, 0.0, 20.0, ch),
+                &f.icon14,
+                amber,
+            );
         } else if a.alert_msg == "Meeting" {
             g.icon('\u{E787}', Rect::new(16.0, 0.0, 20.0, ch), &f.icon14, white);
         } else if a.alert_msg == "Look away" {
             // a drawn eye
             let (ex, ey) = (w / 2.0 - 50.0, ch / 2.0);
-            g.fill_rrect(Rect::new(ex - 8.0, ey - 5.0, 16.0, 10.0), 5.0, Color(1.0, 1.0, 1.0, ca));
+            g.fill_rrect(
+                Rect::new(ex - 8.0, ey - 5.0, 16.0, 10.0),
+                5.0,
+                Color(1.0, 1.0, 1.0, ca),
+            );
             g.fill_circle(ex, ey, 3.4, Color(0.25, 0.55, 0.9, ca));
             g.fill_circle(ex, ey, 1.5, Color(0.0, 0.0, 0.0, ca));
         } else if a.alert_msg == "Drink water" {
             // a drawn water drop
             let (dx, dy) = (w / 2.0 - 52.0, ch / 2.0 + 1.0);
             g.fill_circle(dx, dy + 2.0, 5.0, Color(0.45, 0.8, 1.0, ca));
-            g.fill_poly(&[(dx - 4.4, dy), (dx + 4.4, dy), (dx, dy - 8.0)], Color(0.45, 0.8, 1.0, ca));
+            g.fill_poly(
+                &[(dx - 4.4, dy), (dx + 4.4, dy), (dx, dy - 8.0)],
+                Color(0.45, 0.8, 1.0, ca),
+            );
         } else {
-            g.icon('\u{E916}', Rect::new(w / 2.0 - 58.0, 0.0, 20.0, ch), &f.icon14, white);
+            g.icon(
+                '\u{E916}',
+                Rect::new(w / 2.0 - 58.0, 0.0, 20.0, ch),
+                &f.icon14,
+                white,
+            );
         }
-        let tx = if a.alert_msg == "Meeting" { 44.0 } else if a.alert_msg == "Battery low" { w / 2.0 - 42.0 } else { w / 2.0 - 34.0 };
-        g.text(&label, Rect::new(tx, 0.0, (w - tx - 14.0).max(118.0), ch), &f.body, col, Align::Left);
+        let tx = if a.alert_msg == "Meeting" {
+            44.0
+        } else if a.alert_msg == "Battery low" {
+            w / 2.0 - 42.0
+        } else {
+            w / 2.0 - 34.0
+        };
+        g.text(
+            &label,
+            Rect::new(tx, 0.0, (w - tx - 14.0).max(118.0), ch),
+            &f.body,
+            col,
+            Align::Left,
+        );
         return;
     }
 
     if let Some((notice, until)) = &a.system_preview {
-        let source = crate::win_notifications::display_source(&notice.app, &notice.title, &notice.body);
+        let source =
+            crate::win_notifications::display_source(&notice.app, &notice.title, &notice.body);
         let kind = crate::win_notifications::classify(&notice.app, &notice.title, &notice.body);
         let shade = notification_tint(source).fade(ca);
         let elapsed = notice.received.elapsed().as_secs_f32();
-        let remaining = until.saturating_duration_since(std::time::Instant::now()).as_secs_f32();
+        let remaining = until
+            .saturating_duration_since(std::time::Instant::now())
+            .as_secs_f32();
         // Content follows the spring shape. A soft entrance and exit keep the
         // notification feeling attached to the island instead of a toast.
-        let easing = |v: f32| { let v = v.clamp(0.0, 1.0); v * v * (3.0 - 2.0 * v) };
+        let easing = |v: f32| {
+            let v = v.clamp(0.0, 1.0);
+            v * v * (3.0 - 2.0 * v)
+        };
         let appear = easing(elapsed / 0.34);
         let vanish = easing(remaining / 0.48);
         let opacity = ca * appear.min(vanish);
@@ -487,23 +737,63 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
             draw_notice_icon(a, source, icon, opacity);
         }
         if kind != crate::win_notifications::NoticeKind::Regular && !a.private_notifications {
-            g.fill_rrect(Rect::new(55.0, 17.0 + slide, 2.0, 37.0), 1.0, shade.fade(opacity * 0.8));
+            g.fill_rrect(
+                Rect::new(55.0, 17.0 + slide, 2.0, 37.0),
+                1.0,
+                shade.fade(opacity * 0.8),
+            );
             let badge = Rect::new(239.0, 9.0 + slide, 111.0, 17.0);
             g.fill_rrect(badge, 8.5, shade.fade(opacity * 0.15));
-            g.text(kind.badge(), badge, &f.tiny, shade.fade(opacity), Align::Center);
+            g.text(
+                kind.badge(),
+                badge,
+                &f.tiny,
+                shade.fade(opacity),
+                Align::Center,
+            );
         }
-        g.text(source, Rect::new(60.0, 10.0 + slide, 172.0, 17.0), &f.tiny, shade.fade(opacity), Align::Left);
-        let title = if a.private_notifications { "Notification" } else { &notice.title };
-        g.text(title, Rect::new(60.0, 28.0 + slide, 294.0, 20.0), &f.body, T1.fade(opacity), Align::Left);
+        g.text(
+            source,
+            Rect::new(60.0, 10.0 + slide, 172.0, 17.0),
+            &f.tiny,
+            shade.fade(opacity),
+            Align::Left,
+        );
+        let title = if a.private_notifications {
+            "Notification"
+        } else {
+            &notice.title
+        };
+        g.text(
+            title,
+            Rect::new(60.0, 28.0 + slide, 294.0, 20.0),
+            &f.body,
+            T1.fade(opacity),
+            Align::Left,
+        );
         // A single-line body provides context without turning this into a
         // three-row banner. The complete notification is in Activity.
         if !notice.body.is_empty() {
-            let body = if a.private_notifications { "Content hidden" } else { &notice.body };
-            g.text(body, Rect::new(60.0, 48.0 + slide, 294.0, 14.0), &f.tiny, T2.fade(opacity * 0.9), Align::Left);
+            let body = if a.private_notifications {
+                "Content hidden"
+            } else {
+                &notice.body
+            };
+            g.text(
+                body,
+                Rect::new(60.0, 48.0 + slide, 294.0, 14.0),
+                &f.tiny,
+                T2.fade(opacity * 0.9),
+                Align::Left,
+            );
         }
         // An understated lifetime indicator avoids a static banner feeling.
         let life = (remaining / kind.preview_seconds() as f32).clamp(0.0, 1.0);
-        g.fill_rrect(Rect::new(60.0, 63.0, 288.0 * life, 1.2), 0.6, shade.fade(opacity * 0.48));
+        g.fill_rrect(
+            Rect::new(60.0, 63.0, 288.0 * life, 1.2),
+            0.6,
+            shade.fade(opacity * 0.48),
+        );
         return;
     }
 
@@ -513,98 +803,330 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
     let transfer = crate::transfer::current();
     // A transfer is a secondary live activity whenever music is present.
     // Never force the user to choose between Now Playing and downloads.
-    if a.mstate.has_track() && (copy.is_some() || qbit.is_some() || prism.is_some() || transfer.is_some()) {
+    if a.mstate.has_track()
+        && (copy.is_some() || qbit.is_some() || prism.is_some() || transfer.is_some())
+    {
         let inset = if a.mascot_visible { 40.0 } else { 0.0 };
-        if a.mascot_visible { draw_miso(a, ca); }
-        g.shifted(inset, 0.0, || draw_collapsed_regular(a, w - inset - 78.0, ca));
-        g.fill_rrect(Rect::new(w - 78.0, ch / 2.0 - 13.0, 1.0, 26.0), 0.5, Color::white(0.16 * ca));
+        if a.mascot_visible {
+            draw_miso(a, ca);
+        }
+        g.shifted(inset, 0.0, || {
+            draw_collapsed_regular(a, w - inset - 78.0, ca)
+        });
+        g.fill_rrect(
+            Rect::new(w - 78.0, ch / 2.0 - 13.0, 1.0, 26.0),
+            0.5,
+            Color::white(0.16 * ca),
+        );
         let (progress, label, count) = if let Some(progress) = copy {
-            (Some(progress), "Files".to_string(), 1 + usize::from(qbit.is_some()) + prism.as_ref().map(|p| p.count).unwrap_or(0) + usize::from(transfer.is_some()))
+            (
+                Some(progress),
+                "Files".to_string(),
+                1 + usize::from(qbit.is_some())
+                    + prism.as_ref().map(|p| p.count).unwrap_or(0)
+                    + usize::from(transfer.is_some()),
+            )
         } else if let Some(item) = qbit.as_ref() {
-            let eta = item.eta.map(|s| if s >= 3600 { format!("{}h{:02}m", s / 3600, s % 3600 / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "qBit".into());
-            (Some(item.percent), eta, item.count + prism.as_ref().map(|p| p.count).unwrap_or(0) + usize::from(transfer.is_some()))
+            let eta = item
+                .eta
+                .map(|s| {
+                    if s >= 3600 {
+                        format!("{}h{:02}m", s / 3600, s % 3600 / 60)
+                    } else {
+                        format!("{}m", (s + 59) / 60)
+                    }
+                })
+                .unwrap_or_else(|| "qBit".into());
+            (
+                Some(item.percent),
+                eta,
+                item.count
+                    + prism.as_ref().map(|p| p.count).unwrap_or(0)
+                    + usize::from(transfer.is_some()),
+            )
         } else if let Some(item) = prism.as_ref() {
-            let eta = item.eta.map(|s| if s >= 3600 { format!("{}h{:02}m", s / 3600, s % 3600 / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "Prism".into());
-            (item.percent, eta, item.count + usize::from(transfer.is_some()))
+            let eta = item
+                .eta
+                .map(|s| {
+                    if s >= 3600 {
+                        format!("{}h{:02}m", s / 3600, s % 3600 / 60)
+                    } else {
+                        format!("{}m", (s + 59) / 60)
+                    }
+                })
+                .unwrap_or_else(|| "Prism".into());
+            (
+                item.percent,
+                eta,
+                item.count + usize::from(transfer.is_some()),
+            )
         } else {
-            (None, transfer.as_ref().map(|v| v.app.clone()).unwrap_or_default(), 1)
+            (
+                None,
+                transfer.as_ref().map(|v| v.app.clone()).unwrap_or_default(),
+                1,
+            )
         };
         draw_transfer_ring(a, w - 55.0, ch / 2.0, ca, progress);
-        let short = if label.chars().count() > 10 { format!("{}…", label.chars().take(9).collect::<String>()) } else { label };
-        g.text(&short, Rect::new(w - 37.0, ch / 2.0 - 12.0, 34.0, 24.0), &f.tiny, T2.fade(ca), Align::Center);
+        let short = if label.chars().count() > 10 {
+            format!("{}…", label.chars().take(9).collect::<String>())
+        } else {
+            label
+        };
+        g.text(
+            &short,
+            Rect::new(w - 37.0, ch / 2.0 - 12.0, 34.0, 24.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Center,
+        );
         if count > 1 {
             g.fill_circle(w - 40.0, ch / 2.0 - 12.0, 7.0, a.accent.fade(ca));
-            g.text(&format!("{count}"), Rect::new(w - 47.0, ch / 2.0 - 19.0, 14.0, 14.0), &f.tiny, Color::white(ca), Align::Center);
+            g.text(
+                &format!("{count}"),
+                Rect::new(w - 47.0, ch / 2.0 - 19.0, 14.0, 14.0),
+                &f.tiny,
+                Color::white(ca),
+                Align::Center,
+            );
         }
         return;
     }
 
     if let Some(progress) = copy {
         let left = if a.mascot_visible { 52.0 } else { 17.0 };
-        if a.mascot_visible { draw_miso(a, ca); }
+        if a.mascot_visible {
+            draw_miso(a, ca);
+        }
         let accent = a.accent.fade(ca);
-        g.icon('\u{E896}', Rect::new(left, 0.0, 22.0, ch), &f.icon14, accent);
-        g.text("Explorer file operation", Rect::new(left + 28.0, 2.0, (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.tiny, T2.fade(ca), Align::Left);
-        g.text(&format!("{}% · Windows progress", (progress * 100.0).round() as u32), Rect::new(left + 28.0, (ch / 2.0 - 1.0).max(15.0), (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.small, T1.fade(ca), Align::Left);
+        g.icon(
+            '\u{E896}',
+            Rect::new(left, 0.0, 22.0, ch),
+            &f.icon14,
+            accent,
+        );
+        g.text(
+            "Explorer file operation",
+            Rect::new(
+                left + 28.0,
+                2.0,
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &format!("{}% · Windows progress", (progress * 100.0).round() as u32),
+            Rect::new(
+                left + 28.0,
+                (ch / 2.0 - 1.0).max(15.0),
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
         g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
-        g.fill_rrect(Rect::new(track.x, track.y, track.w * progress, track.h), 2.0, accent);
+        g.fill_rrect(
+            Rect::new(track.x, track.y, track.w * progress, track.h),
+            2.0,
+            accent,
+        );
         return;
     }
 
     if let Some(item) = qbit {
         let left = if a.mascot_visible { 52.0 } else { 17.0 };
-        if a.mascot_visible { draw_miso(a, ca); }
+        if a.mascot_visible {
+            draw_miso(a, ca);
+        }
         let accent = a.accent.fade(ca);
-        g.icon('\u{E896}', Rect::new(left, 0.0, 22.0, ch), &f.icon14, accent);
-        let eta = item.eta.map(|s| if s >= 3600 { format!("{}h {}m", s / 3600, (s % 3600) / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "ETA unknown".into());
-        let detail = format!("{}%  ·  {}  ·  {}", (item.percent * 100.0).round() as u32, crate::transfer::rate_label(item.speed), eta);
-        g.text(&format!("qBittorrent · {}", item.name), Rect::new(left + 28.0, 2.0, (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.tiny, T2.fade(ca), Align::Left);
-        g.text(&detail, Rect::new(left + 28.0, (ch / 2.0 - 1.0).max(15.0), (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.small, T1.fade(ca), Align::Left);
+        g.icon(
+            '\u{E896}',
+            Rect::new(left, 0.0, 22.0, ch),
+            &f.icon14,
+            accent,
+        );
+        let eta = item
+            .eta
+            .map(|s| {
+                if s >= 3600 {
+                    format!("{}h {}m", s / 3600, (s % 3600) / 60)
+                } else {
+                    format!("{}m", (s + 59) / 60)
+                }
+            })
+            .unwrap_or_else(|| "ETA unknown".into());
+        let detail = format!(
+            "{}%  ·  {}  ·  {}",
+            (item.percent * 100.0).round() as u32,
+            crate::transfer::rate_label(item.speed),
+            eta
+        );
+        g.text(
+            &format!("qBittorrent · {}", item.name),
+            Rect::new(
+                left + 28.0,
+                2.0,
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &detail,
+            Rect::new(
+                left + 28.0,
+                (ch / 2.0 - 1.0).max(15.0),
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
         g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
-        g.fill_rrect(Rect::new(track.x, track.y, track.w * item.percent, track.h), 2.0, accent);
+        g.fill_rrect(
+            Rect::new(track.x, track.y, track.w * item.percent, track.h),
+            2.0,
+            accent,
+        );
         return;
     }
 
     if let Some(item) = prism {
         let left = if a.mascot_visible { 52.0 } else { 17.0 };
-        if a.mascot_visible { draw_miso(a, ca); }
+        if a.mascot_visible {
+            draw_miso(a, ca);
+        }
         let accent = a.accent.fade(ca);
-        g.icon('\u{E896}', Rect::new(left, 0.0, 22.0, ch), &f.icon14, accent);
-        let pct = item.percent.map(|p| format!("{}%", (p * 100.0).round() as u32)).unwrap_or_else(|| item.state.clone());
-        let eta = item.eta.map(|s| if s >= 3600 { format!("{}h {}m", s / 3600, (s % 3600) / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "ETA unknown".into());
-        let detail = format!("{}  ·  {}  ·  {}", pct, crate::transfer::rate_label(item.speed), eta);
-        g.text(&format!("Prism · {}", item.name), Rect::new(left + 28.0, 2.0, (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.tiny, T2.fade(ca), Align::Left);
-        g.text(&detail, Rect::new(left + 28.0, (ch / 2.0 - 1.0).max(15.0), (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.small, T1.fade(ca), Align::Left);
+        g.icon(
+            '\u{E896}',
+            Rect::new(left, 0.0, 22.0, ch),
+            &f.icon14,
+            accent,
+        );
+        let pct = item
+            .percent
+            .map(|p| format!("{}%", (p * 100.0).round() as u32))
+            .unwrap_or_else(|| item.state.clone());
+        let eta = item
+            .eta
+            .map(|s| {
+                if s >= 3600 {
+                    format!("{}h {}m", s / 3600, (s % 3600) / 60)
+                } else {
+                    format!("{}m", (s + 59) / 60)
+                }
+            })
+            .unwrap_or_else(|| "ETA unknown".into());
+        let detail = format!(
+            "{}  ·  {}  ·  {}",
+            pct,
+            crate::transfer::rate_label(item.speed),
+            eta
+        );
+        g.text(
+            &format!("Prism · {}", item.name),
+            Rect::new(
+                left + 28.0,
+                2.0,
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &detail,
+            Rect::new(
+                left + 28.0,
+                (ch / 2.0 - 1.0).max(15.0),
+                (w - left - 42.0).max(40.0),
+                (ch / 2.0).max(17.0),
+            ),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
         g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
         if let Some(progress) = item.percent {
-            g.fill_rrect(Rect::new(track.x, track.y, track.w * progress, track.h), 2.0, accent);
+            g.fill_rrect(
+                Rect::new(track.x, track.y, track.w * progress, track.h),
+                2.0,
+                accent,
+            );
         } else {
             let phase = (sys::filetime_now().rem_euclid(20_000_000) as f32) / 20_000_000.0;
-            g.fill_rrect(Rect::new(track.x + track.w * phase * 0.70, track.y, track.w * 0.30, track.h), 2.0, accent);
+            g.fill_rrect(
+                Rect::new(
+                    track.x + track.w * phase * 0.70,
+                    track.y,
+                    track.w * 0.30,
+                    track.h,
+                ),
+                2.0,
+                accent,
+            );
         }
         return;
     }
 
     if let Some(activity) = transfer {
         let left = if a.mascot_visible { 52.0 } else { 17.0 };
-        if a.mascot_visible { draw_miso(a, ca); }
+        if a.mascot_visible {
+            draw_miso(a, ca);
+        }
         let accent = a.accent.fade(ca);
-        g.icon('\u{E896}', Rect::new(left, 0.0, 22.0, ch), &f.icon14, accent);
+        g.icon(
+            '\u{E896}',
+            Rect::new(left, 0.0, 22.0, ch),
+            &f.icon14,
+            accent,
+        );
         let label = if activity.app == "Browser download" {
-            format!("Browser download · {}", crate::transfer::rate_label(activity.bytes_per_second))
+            format!(
+                "Browser download · {}",
+                crate::transfer::rate_label(activity.bytes_per_second)
+            )
         } else {
-            format!("{} active · {} I/O", activity.app, crate::transfer::rate_label(activity.bytes_per_second))
+            format!(
+                "{} active · {} I/O",
+                activity.app,
+                crate::transfer::rate_label(activity.bytes_per_second)
+            )
         };
-        g.text(&label, Rect::new(left + 28.0, 0.0, (w - left - 42.0).max(40.0), ch - 9.0), &f.small, T1.fade(ca), Align::Left);
+        g.text(
+            &label,
+            Rect::new(left + 28.0, 0.0, (w - left - 42.0).max(40.0), ch - 9.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         // Moving activity strip: indeterminate on purpose. Process disk IO
         // cannot tell us the download's total size or actual percentage.
         let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
         g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
         let phase = (sys::filetime_now().rem_euclid(20_000_000) as f32) / 20_000_000.0;
-        g.fill_rrect(Rect::new(track.x + track.w * phase * 0.70, track.y, track.w * 0.30, track.h), 2.0, accent);
+        g.fill_rrect(
+            Rect::new(
+                track.x + track.w * phase * 0.70,
+                track.y,
+                track.w * 0.30,
+                track.h,
+            ),
+            2.0,
+            accent,
+        );
         return;
     }
 
@@ -625,19 +1147,40 @@ fn draw_transfer_ring(a: &App, cx: f32, cy: f32, alpha: f32, progress: Option<f3
     let segments = 36;
     let phase = sys::filetime_now().rem_euclid(20_000_000) as f32 / 20_000_000.0;
     for i in 0..segments {
-        let angle = (i as f32 / segments as f32) * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
+        let angle =
+            (i as f32 / segments as f32) * std::f32::consts::TAU - std::f32::consts::FRAC_PI_2;
         let x = cx + 11.0 * angle.cos();
         let y = cy + 11.0 * angle.sin();
         let active = progress.map_or_else(
             || ((i as f32 / segments as f32 - phase).rem_euclid(1.0)) < 0.24,
             |p| (i as f32 / segments as f32) < p.clamp(0.0, 1.0),
         );
-        g.fill_circle(x, y, 1.35, if active { a.accent.fade(alpha) } else { Color::white(0.16 * alpha) });
+        g.fill_circle(
+            x,
+            y,
+            1.35,
+            if active {
+                a.accent.fade(alpha)
+            } else {
+                Color::white(0.16 * alpha)
+            },
+        );
     }
     if let Some(p) = progress {
-        g.text(&format!("{}", (p.clamp(0.0, 1.0) * 100.0).round() as u32), Rect::new(cx - 11.0, cy - 8.0, 22.0, 16.0), &g.fonts.tiny, T1.fade(alpha), Align::Center);
+        g.text(
+            &format!("{}", (p.clamp(0.0, 1.0) * 100.0).round() as u32),
+            Rect::new(cx - 11.0, cy - 8.0, 22.0, 16.0),
+            &g.fonts.tiny,
+            T1.fade(alpha),
+            Align::Center,
+        );
     } else {
-        g.icon('\u{E896}', Rect::new(cx - 7.0, cy - 7.0, 14.0, 14.0), &g.fonts.icon14, T2.fade(alpha));
+        g.icon(
+            '\u{E896}',
+            Rect::new(cx - 7.0, cy - 7.0, 14.0, 14.0),
+            &g.fonts.icon14,
+            T2.fade(alpha),
+        );
     }
 }
 
@@ -669,8 +1212,18 @@ fn draw_collapsed_regular(a: &App, w: f32, ca: f32) {
             format!("{}:{mm:02}", if hh % 12 == 0 { 12 } else { hh % 12 })
         };
         let clock_x = w - 75.0;
-        g.fill_rrect(Rect::new(clock_x - 8.0, ch / 2.0 - 7.0, 1.0, 14.0), 0.5, Color::white(0.18 * ca));
-        g.text(&clock, Rect::new(clock_x, 0.0, 70.0, ch), &f.body, T1.fade(ca), Align::Left);
+        g.fill_rrect(
+            Rect::new(clock_x - 8.0, ch / 2.0 - 7.0, 1.0, 14.0),
+            0.5,
+            Color::white(0.18 * ca),
+        );
+        g.text(
+            &clock,
+            Rect::new(clock_x, 0.0, 70.0, ch),
+            &f.body,
+            T1.fade(ca),
+            Align::Left,
+        );
         // Equalizer sits between the track information and the clock.
         let bx = clock_x - 36.0;
         draw_bars(a, bx, ch / 2.0, ca);
@@ -704,7 +1257,12 @@ fn draw_collapsed_regular(a: &App, w: f32, ca: f32) {
             Align::Center,
         );
     } else if timer {
-        g.icon('\u{E916}', Rect::new(w / 2.0 - 36.0, 0.0, 18.0, ch), &f.icon14, T1.fade(ca));
+        g.icon(
+            '\u{E916}',
+            Rect::new(w / 2.0 - 36.0, 0.0, 18.0, ch),
+            &f.icon14,
+            T1.fade(ca),
+        );
         g.text(
             &fmt_time(a.timer_remaining_ms() as f64 / 1000.0),
             Rect::new(w / 2.0 - 14.0, 0.0, 56.0, ch),
@@ -731,28 +1289,67 @@ fn draw_collapsed_regular(a: &App, w: f32, ca: f32) {
         let glance = a.glance();
         let gw = glance.as_ref().map_or(0.0, |(_, gw)| gw + 16.0);
         let x0 = (w - (dw + 15.0 + tw + gw)) / 2.0;
-        g.text(&format!("{day:02}/{month:02}/{:02}", year.rem_euclid(100)), Rect::new(x0, 0.0, dw, ch), &f.tiny, T3.fade(ca), Align::Right);
-        g.fill_rrect(Rect::new(x0 + dw + 7.0, ch / 2.0 - 7.0, 1.0, 14.0), 0.5, Color::white(0.18 * ca));
-        g.text(&label, Rect::new(x0 + dw + 15.0, 0.0, tw, ch), &f.menu, T1.fade(ca), Align::Left);
+        g.text(
+            &format!("{day:02}/{month:02}/{:02}", year.rem_euclid(100)),
+            Rect::new(x0, 0.0, dw, ch),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Right,
+        );
+        g.fill_rrect(
+            Rect::new(x0 + dw + 7.0, ch / 2.0 - 7.0, 1.0, 14.0),
+            0.5,
+            Color::white(0.18 * ca),
+        );
+        g.text(
+            &label,
+            Rect::new(x0 + dw + 15.0, 0.0, tw, ch),
+            &f.menu,
+            T1.fade(ca),
+            Align::Left,
+        );
         if let Some((txt, gwid)) = glance {
             // optional glance: separator, then secondary-colour text (tasks get a small checkbox)
             let sx = x0 + dw + 15.0 + tw + 7.0;
-            g.fill_rrect(Rect::new(sx, ch / 2.0 - 7.0, 1.0, 14.0), 0.5, Color::white(0.18 * ca));
+            g.fill_rrect(
+                Rect::new(sx, ch / 2.0 - 7.0, 1.0, 14.0),
+                0.5,
+                Color::white(0.18 * ca),
+            );
             let mut gx = sx + 9.0;
             let kind = a.glance_kind();
             if kind == 1 {
-                g.icon('\u{E73A}', Rect::new(gx, 0.0, 16.0, ch), &f.icon14, T2.fade(ca));
+                g.icon(
+                    '\u{E73A}',
+                    Rect::new(gx, 0.0, 16.0, ch),
+                    &f.icon14,
+                    T2.fade(ca),
+                );
                 gx += 19.0;
             }
             // the next meeting is dimmer than the other glances
-            let gcol = if kind == 4 { Color(0.55, 0.53, 0.49, ca) } else { T2.fade(ca) };
-            g.text(&txt, Rect::new(gx, 0.0, gwid, ch), &f.small, gcol, Align::Left);
+            let gcol = if kind == 4 {
+                Color(0.55, 0.53, 0.49, ca)
+            } else {
+                T2.fade(ca)
+            };
+            g.text(
+                &txt,
+                Rect::new(gx, 0.0, gwid, ch),
+                &f.small,
+                gcol,
+                Align::Left,
+            );
         }
         if a.cycle_dots() {
             // page dots while cycling: the active page in blue, the others grey
             let active = a.cycle as usize % 4;
             for i in 0..4 {
-                let c = if i == active { Color(DEFAULT_ACCENT.0, DEFAULT_ACCENT.1, DEFAULT_ACCENT.2, ca) } else { Color(0.267, 0.267, 0.267, ca) };
+                let c = if i == active {
+                    Color(DEFAULT_ACCENT.0, DEFAULT_ACCENT.1, DEFAULT_ACCENT.2, ca)
+                } else {
+                    Color(0.267, 0.267, 0.267, ca)
+                };
                 g.fill_circle(w / 2.0 - 12.0 + i as f32 * 8.0, ch - 4.0, 2.0, c);
             }
         }
@@ -784,30 +1381,77 @@ fn draw_miso_at(a: &App, ca: f32, cx: f32, baseline: f32, reacting: bool) {
     let t = a.mascot_birth.elapsed().as_secs_f32();
     let playing = a.mstate.playing;
     let hovering = a.mascot_cursor().is_some_and(|x| x < 43.0);
-    let playful = a.mascot_reaction_until.is_some_and(|until| std::time::Instant::now() < until);
-    let cy = baseline + if reacting || playful { (t * 7.0).sin() * 1.2 } else if playing { (t * 4.2).sin() * 0.7 } else { (t * 0.7).sin() * 0.2 };
+    let playful = a
+        .mascot_reaction_until
+        .is_some_and(|until| std::time::Instant::now() < until);
+    let cy = baseline
+        + if reacting || playful {
+            (t * 7.0).sin() * 1.2
+        } else if playing {
+            (t * 4.2).sin() * 0.7
+        } else {
+            (t * 0.7).sin() * 0.2
+        };
     let pearl = Color(0.96, 0.96, 1.0, ca);
     let blue = glass_accent(a).fade(ca);
     let breathing = 0.5 + 0.5 * (t * 1.15).sin();
-    let glow = 0.06 + if reacting || playful { 0.17 } else if hovering { 0.13 } else if playing { 0.10 + 0.10 * a.level } else { 0.035 + 0.025 * breathing };
-    g.fill_rrect(Rect::new(cx - 15.0, cy - 13.0, 30.0, 26.0), 13.0, blue.fade(glow));
+    let glow = 0.06
+        + if reacting || playful {
+            0.17
+        } else if hovering {
+            0.13
+        } else if playing {
+            0.10 + 0.10 * a.level
+        } else {
+            0.035 + 0.025 * breathing
+        };
+    g.fill_rrect(
+        Rect::new(cx - 15.0, cy - 13.0, 30.0, 26.0),
+        13.0,
+        blue.fade(glow),
+    );
     // Miso has a small soft shell and two rounded ears. Geometry is drawn in
     // the same reserved 40px area, with no image asset or extra animation.
     g.fill_circle(cx - 10.5, cy - 10.5, 4.0, Color(0.13, 0.14, 0.18, ca));
     g.fill_circle(cx + 10.5, cy - 10.5, 4.0, Color(0.13, 0.14, 0.18, ca));
-    g.fill_rrect(Rect::new(cx - 14.0, cy - 11.0, 28.0, 24.0), 11.0, Color(0.11, 0.12, 0.16, ca));
-    g.stroke_rrect(Rect::new(cx - 13.6, cy - 10.6, 27.2, 23.2), 10.6, blue.fade(ca * 0.32), 0.8);
+    g.fill_rrect(
+        Rect::new(cx - 14.0, cy - 11.0, 28.0, 24.0),
+        11.0,
+        Color(0.11, 0.12, 0.16, ca),
+    );
+    g.stroke_rrect(
+        Rect::new(cx - 13.6, cy - 10.6, 27.2, 23.2),
+        10.6,
+        blue.fade(ca * 0.32),
+        0.8,
+    );
     // Natural short double-blink at irregular-looking intervals.
     let beat = (t + 1.3).rem_euclid(5.7);
-    let blink = if beat > 5.48 { (1.0 - ((beat - 5.48) / 0.22 * std::f32::consts::PI).sin()).clamp(0.06, 1.0) }
-        else if beat > 5.12 && beat < 5.30 { (1.0 - ((beat - 5.12) / 0.18 * std::f32::consts::PI).sin()).clamp(0.06, 1.0) }
-        else { 1.0 };
-    let look = if reacting || playful { (t * 2.0).sin() * 0.2 } else if hovering {
+    let blink = if beat > 5.48 {
+        (1.0 - ((beat - 5.48) / 0.22 * std::f32::consts::PI).sin()).clamp(0.06, 1.0)
+    } else if beat > 5.12 && beat < 5.30 {
+        (1.0 - ((beat - 5.12) / 0.18 * std::f32::consts::PI).sin()).clamp(0.06, 1.0)
+    } else {
+        1.0
+    };
+    let look = if reacting || playful {
+        (t * 2.0).sin() * 0.2
+    } else if hovering {
         ((a.mascot_cursor().unwrap_or(cx) - cx) / 62.0).clamp(-1.0, 1.0)
-    } else if playing { 0.3 } else { (t * 0.6).sin() * 0.58 };
+    } else if playing {
+        0.3
+    } else {
+        (t * 0.6).sin() * 0.58
+    };
     for dx in [-5.5f32, 5.5f32] {
         let ex = cx + dx + look * 1.2;
-        let eye_h = if reacting { 9.3 } else if hovering { 9.0 } else { 8.2 };
+        let eye_h = if reacting {
+            9.3
+        } else if hovering {
+            9.0
+        } else {
+            8.2
+        };
         if (hovering || playing || reacting || playful) && blink > 0.5 {
             // A cheerful crescent eye echoes the expressive mascot in the
             // floating-glass concept. It opens back up while resting.
@@ -815,20 +1459,34 @@ fn draw_miso_at(a: &App, ca: f32, cx: f32, baseline: f32, reacting: bool) {
             g.line((ex - 1.7, cy - 1.5), (ex + 0.4, cy - 2.2), 1.8, pearl);
             g.line((ex + 0.4, cy - 2.2), (ex + 3.2, cy + 0.7), 1.8, pearl);
         } else {
-            g.fill_rrect(Rect::new(ex - 2.25, cy - eye_h * 0.5 * blink, 4.5, eye_h * blink), 2.1, pearl);
-            if blink > 0.55 { g.fill_circle(ex + 0.65, cy - 1.7, 0.65, Color(1.0, 1.0, 1.0, ca)); }
+            g.fill_rrect(
+                Rect::new(ex - 2.25, cy - eye_h * 0.5 * blink, 4.5, eye_h * blink),
+                2.1,
+                pearl,
+            );
+            if blink > 0.55 {
+                g.fill_circle(ex + 0.65, cy - 1.7, 0.65, Color(1.0, 1.0, 1.0, ca));
+            }
         }
     }
     // Expressions react to notifications, hovering, music and focus time.
     if reacting || playful || hovering || playing {
-        g.fill_rrect(Rect::new(cx - 2.6, cy + 6.6, 5.2, if reacting { 2.4 } else { 1.2 }), 1.0, if reacting { pearl.fade(0.8) } else { blue });
+        g.fill_rrect(
+            Rect::new(cx - 2.6, cy + 6.6, 5.2, if reacting { 2.4 } else { 1.2 }),
+            1.0,
+            if reacting { pearl.fade(0.8) } else { blue },
+        );
         if reacting || playful {
             for side in [-1.0f32, 1.0] {
                 g.fill_circle(cx + side * 10.0, cy + 3.8, 2.0, blue.fade(ca * 0.35));
             }
         }
     } else if a.timer_running() {
-        g.fill_rrect(Rect::new(cx - 2.6, cy + 5.7, 5.2, 1.0), 0.5, pearl.fade(0.55));
+        g.fill_rrect(
+            Rect::new(cx - 2.6, cy + 5.7, 5.2, 1.0),
+            0.5,
+            pearl.fade(0.55),
+        );
     }
     // Small contextual details give the companion a role without adding UI
     // chrome. These travel with the pill and stay subtle while idle.
@@ -842,7 +1500,11 @@ fn draw_miso_at(a: &App, ca: f32, cx: f32, baseline: f32, reacting: bool) {
             g.fill_circle(cx - 13.0, cy - 9.0, 2.0, blue.fade(pop));
             g.fill_circle(cx + 13.0, cy - 9.0, 2.0, blue.fade(pop));
         } else {
-            g.fill_rrect(Rect::new(cx + 11.0, cy - 8.0, 5.0, 1.4), 0.7, pearl.fade(pop));
+            g.fill_rrect(
+                Rect::new(cx + 11.0, cy - 8.0, 5.0, 1.4),
+                0.7,
+                pearl.fade(pop),
+            );
         }
     } else if playing && !reacting {
         // Two tiny floating notes, drawn as geometry so the mascot never
@@ -872,7 +1534,11 @@ fn draw_state_dot(a: &App, ch: f32, ca: f32) {
     match a.dot_state() {
         DotState::Idle => g.fill_circle(cx, cy, 3.0, blue),
         DotState::Mic | DotState::MicMuted => {
-            let c = if a.dot_state() == DotState::MicMuted { Color(1.0, 0.3, 0.3, ca) } else { blue };
+            let c = if a.dot_state() == DotState::MicMuted {
+                Color(1.0, 0.3, 0.3, ca)
+            } else {
+                blue
+            };
             g.fill_circle(cx, cy, 4.2, c);
             g.fill_circle(cx, cy, 2.6, BLACK);
         }
@@ -884,10 +1550,15 @@ fn draw_state_dot(a: &App, ch: f32, ca: f32) {
         }
         DotState::Focus => {
             let done = focus_fraction(a.timer_total_s, a.timer_remaining_ms());
-            let col = if a.break_mode { Color(0.12, 0.72, 0.62, ca) } else { blue };
+            let col = if a.break_mode {
+                Color(0.12, 0.72, 0.62, ca)
+            } else {
+                blue
+            };
             let steps = 28;
             let pt = |i: usize| {
-                let ang = -std::f32::consts::FRAC_PI_2 + i as f32 / steps as f32 * std::f32::consts::TAU;
+                let ang =
+                    -std::f32::consts::FRAC_PI_2 + i as f32 / steps as f32 * std::f32::consts::TAU;
                 (cx + 4.4 * ang.cos(), cy + 4.4 * ang.sin())
             };
             for i in 0..steps {
@@ -914,7 +1585,11 @@ fn draw_focus_line(a: &App, w: f32, ch: f32, ca: f32) {
     g.fill_rrect(Rect::new(x, y, len, 2.0), 1.0, Color(0.15, 0.15, 0.165, ca));
     if done > 0.0 {
         // the existing blue; breaks use the teal of the break nudge
-        let c = if a.break_mode { Color(0.12, 0.72, 0.62, ca) } else { Color(DEFAULT_ACCENT.0, DEFAULT_ACCENT.1, DEFAULT_ACCENT.2, ca) };
+        let c = if a.break_mode {
+            Color(0.12, 0.72, 0.62, ca)
+        } else {
+            Color(DEFAULT_ACCENT.0, DEFAULT_ACCENT.1, DEFAULT_ACCENT.2, ca)
+        };
         g.fill_rrect(Rect::new(x, y, (len * done).max(2.0), 2.0), 1.0, c);
     }
 }
@@ -944,12 +1619,20 @@ fn hot(a: &App, act: Act) -> bool {
 
 /// How hovered a control is, 0..1 (eases in and out instead of snapping).
 fn hot_k(a: &App, act: Act) -> f32 {
-    a.hover.iter().find(|(x, _)| *x == act).map_or(0.0, |(_, v)| *v)
+    a.hover
+        .iter()
+        .find(|(x, _)| *x == act)
+        .map_or(0.0, |(_, v)| *v)
 }
 
 fn mix(a: Color, b: Color, t: f32) -> Color {
     let t = t.clamp(0.0, 1.0);
-    Color(a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, a.2 + (b.2 - a.2) * t, a.3 + (b.3 - a.3) * t)
+    Color(
+        a.0 + (b.0 - a.0) * t,
+        a.1 + (b.1 - a.1) * t,
+        a.2 + (b.2 - a.2) * t,
+        a.3 + (b.3 - a.3) * t,
+    )
 }
 
 /// The hover squash of the collapsed pill, same keyframes as the website's notch:
@@ -967,7 +1650,9 @@ pub fn squash(jiggle: f32) -> (f32, f32) {
     (a.0 + (b.0 - a.0) * k, a.1 + (b.1 - a.1) * k)
 }
 
-const TAB_LABELS: [&str; 10] = ["Home", "Media", "Activity", "Agenda", "Shelf", "Clips", "Apps", "Tools", "Stats", "Power"];
+const TAB_LABELS: [&str; 10] = [
+    "Home", "Media", "Activity", "Agenda", "Shelf", "Clips", "Apps", "Tools", "Stats", "Power",
+];
 const TAB_ICONS: [char; 10] = [
     '\u{E80F}', // home
     '\u{E8D6}', // music
@@ -981,13 +1666,11 @@ const TAB_ICONS: [char; 10] = [
     '\u{E7E8}', // power
 ];
 
-/// Two levels: five primary destinations, then five compact utilities.
+/// One icon rail for all destinations; labels are shown for the selected page.
 pub fn tab_rects() -> Vec<Rect> {
-    (0..10).map(|i| if i < 5 {
-        Rect::new(48.0 + i as f32 * 101.0, 7.0, 96.0, 30.0)
-    } else {
-        Rect::new(73.0 + (i - 5) as f32 * 91.0, 41.0, 86.0, 23.0)
-    }).collect()
+    (0..10)
+        .map(|i| Rect::new(50.0 + i as f32 * 50.0, 7.0, 48.0, 34.0))
+        .collect()
 }
 
 fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
@@ -995,13 +1678,44 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let f = &g.fonts;
 
     // Drill-down panels don't add tiny tabs to the already crowded tab row.
-    if matches!(a.page, Page::Processes | Page::Calculator | Page::Typing | Page::WindowManager | Page::Mirror | Page::ShelfPreview | Page::Weather | Page::Tasks | Page::Assistant) {
+    if matches!(
+        a.page,
+        Page::Processes
+            | Page::Calculator
+            | Page::Typing
+            | Page::WindowManager
+            | Page::Mirror
+            | Page::ShelfPreview
+            | Page::Weather
+            | Page::Tasks
+            | Page::Assistant
+    ) {
         let back = Rect::new(18.0, 8.0, 80.0, 28.0);
-        hits.push(Hit { r: back, act: Act::SubpageBack });
+        hits.push(Hit {
+            r: back,
+            act: Act::SubpageBack,
+        });
         g.fill_rrect(back, 12.0, HOVER.fade(ca));
         g.text("‹ Back", back, &f.small, T1.fade(ca), Align::Center);
-        let title = match a.page { Page::Assistant => "Quick Spotify queue", Page::Processes => "Task Manager", Page::WindowManager => "Window Layouts", Page::Mirror => "Mirror", Page::ShelfPreview => "Quick Look", Page::Activity => "Activity Center", Page::Weather => "Weather", Page::Tasks => "Focus & Tasks", Page::Typing => "Typing Sprint", _ => "Calculator" };
-        g.text(title, Rect::new(115.0, 8.0, EXP_W - 230.0, 28.0), &f.title, T1.fade(ca), Align::Center);
+        let title = match a.page {
+            Page::Assistant => "Quick Spotify queue",
+            Page::Processes => "Task Manager",
+            Page::WindowManager => "Window Layouts",
+            Page::Mirror => "Mirror",
+            Page::ShelfPreview => "Quick Look",
+            Page::Activity => "Activity Center",
+            Page::Weather => "Weather",
+            Page::Tasks => "Focus & Tasks",
+            Page::Typing => "Typing Sprint",
+            _ => "Calculator",
+        };
+        g.text(
+            title,
+            Rect::new(115.0, 8.0, EXP_W - 230.0, 28.0),
+            &f.title,
+            T1.fade(ca),
+            Align::Center,
+        );
         let start = hits.len();
         g.shifted(0.0, CONTENT_Y, || match a.page {
             Page::Processes => page_processes(a, ca, hits),
@@ -1015,39 +1729,59 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             Page::Assistant => page_assistant(a, ca, hits),
             _ => page_calculator(a, ca, hits),
         });
-        for h in &mut hits[start..] { h.r.y += CONTENT_Y; }
+        for h in &mut hits[start..] {
+            h.r.y += CONTENT_Y;
+        }
         return;
     }
 
-    // Top actions sit outside two inset, macOS-like segmented navigation rails.
+    // A single floating macOS-style icon rail keeps every destination in view.
     let pin = Rect::new(12.0, 8.0, 28.0, 28.0);
-    hits.push(Hit { r: pin, act: Act::Pin });
-    if hot(a, Act::Pin) { g.fill_circle(pin.cx(), pin.cy(), 13.0, Color::white(0.10 * ca)); }
-    let pc = if a.pinned { a.accent } else if hot(a, Act::Pin) { T1 } else { T3 };
+    hits.push(Hit {
+        r: pin,
+        act: Act::Pin,
+    });
+    if hot(a, Act::Pin) {
+        g.fill_circle(pin.cx(), pin.cy(), 13.0, Color::white(0.10 * ca));
+    }
+    let pc = if a.pinned {
+        a.accent
+    } else if hot(a, Act::Pin) {
+        T1
+    } else {
+        T3
+    };
     g.icon('\u{E718}', pin, &f.icon14, pc.fade(ca));
 
     let chev = Rect::new(EXP_W - 40.0, 8.0, 28.0, 28.0);
-    hits.push(Hit { r: chev, act: Act::Collapse });
-    if hot(a, Act::Collapse) { g.fill_circle(chev.cx(), chev.cy(), 13.0, Color::white(0.10 * ca)); }
-    g.icon('\u{E70E}', chev, &f.icon14, (if hot(a, Act::Collapse) { T1 } else { T3 }).fade(ca));
+    hits.push(Hit {
+        r: chev,
+        act: Act::Collapse,
+    });
+    if hot(a, Act::Collapse) {
+        g.fill_circle(chev.cx(), chev.cy(), 13.0, Color::white(0.10 * ca));
+    }
+    g.icon(
+        '\u{E70E}',
+        chev,
+        &f.icon14,
+        (if hot(a, Act::Collapse) { T1 } else { T3 }).fade(ca),
+    );
 
     let rects = tab_rects();
-    let primary_rail = Rect::new(45.0, 5.0, EXP_W - 90.0, 34.0);
-    let utility_rail = Rect::new(67.0, 41.0, EXP_W - 134.0, 24.0);
-    g.fill_rrect(primary_rail, 17.0, Color::white(0.045 * ca));
-    g.stroke_rrect(primary_rail, 17.0, Color::white(0.075 * ca), 0.8);
-    g.fill_rrect(utility_rail, 12.0, Color::white(0.026 * ca));
-    g.stroke_rrect(utility_rail, 12.0, Color::white(0.055 * ca), 0.7);
-    let active_index = PAGES.iter().position(|p| *p == a.page).unwrap_or(0);
-    let pill_y = if active_index < 5 { 7.0 } else { 41.0 };
-    let pill_h = if active_index < 5 { 30.0 } else { 23.0 };
-    let pill = Rect::new(a.tab_x, pill_y, a.tab_w, pill_h);
+    let rail = Rect::new(47.0, 5.0, EXP_W - 94.0, 38.0);
+    g.fill_rrect(rail, 19.0, Color(0.0, 0.0, 0.0, 0.34 * ca));
+    g.stroke_rrect(rail, 19.0, Color::white(0.14 * ca), 0.9);
+    let pill = Rect::new(a.tab_x, 7.0, a.tab_w, 34.0);
     let active_tint = page_accent(a, a.page);
-    g.fill_rrect(pill, pill_h * 0.5, Color::white(0.085 * ca));
-    g.fill_rrect(pill, pill_h * 0.5, active_tint.fade(0.075 * ca));
-    g.stroke_rrect(Rect::new(pill.x + 0.5, pill.y + 0.5, pill.w - 1.0, pill.h - 1.0),
-        (pill_h * 0.5 - 0.5).max(1.0), Color::white(0.15 * ca), 0.8);
-    g.fill_rrect(Rect::new(pill.cx() - 8.0, pill.y + pill_h - 2.5, 16.0, 1.5), 0.75, active_tint.fade(ca));
+    g.fill_rrect(pill, 17.0, Color::white(0.10 * ca));
+    g.fill_rrect(pill, 17.0, active_tint.fade(0.10 * ca));
+    g.stroke_rrect(
+        Rect::new(pill.x + 0.5, pill.y + 0.5, pill.w - 1.0, pill.h - 1.0),
+        16.5,
+        Color::white(0.22 * ca),
+        0.9,
+    );
     for (i, p) in PAGES.iter().enumerate() {
         let r = rects[i];
         let act = Act::Tab(*p);
@@ -1055,18 +1789,60 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let k = hot_k(a, act);
         let selected = a.page == *p;
         if !selected && k > 0.01 {
-            g.fill_rrect(r, if i < 5 { 15.0 } else { 10.0 }, page_accent(a, *p).fade(0.075 * k * ca));
+            g.fill_rrect(
+                Rect::new(r.x + 4.0, r.y + 3.0, r.w - 8.0, r.h - 6.0),
+                14.0,
+                page_accent(a, *p).fade(0.10 * k * ca),
+            );
         }
-        let neutral = Color::white(if i < 5 { 0.75 } else { 0.62 });
-        let col = if selected { mix(T1, page_accent(a, *p), 0.20) } else { mix(neutral, T1, k) };
-        if i < 5 {
-            g.icon(TAB_ICONS[i], Rect::new(r.x + 11.0, r.y + 6.0, 21.0, 18.0), &f.icon14, col.fade(ca));
-            g.text(TAB_LABELS[i], Rect::new(r.x + 34.0, r.y + 5.0, r.w - 39.0, 20.0), &f.small, col.fade(ca), Align::Left);
+        let neutral = Color::white(0.77);
+        let col = if selected {
+            mix(T1, page_accent(a, *p), 0.12)
         } else {
-            g.icon(TAB_ICONS[i], Rect::new(r.x + 5.0, r.y + 2.0, 19.0, r.h - 4.0), &f.icon14, col.fade(ca));
-            g.text(TAB_LABELS[i], Rect::new(r.x + 26.0, r.y, r.w - 28.0, r.h), &f.tiny, col.fade(ca), Align::Left);
+            mix(neutral, T1, k)
+        };
+        g.icon(
+            TAB_ICONS[i],
+            Rect::new(r.x + 12.0, r.y + 7.0, 24.0, 20.0),
+            &f.icon14,
+            col.fade(ca),
+        );
+        if selected {
+            g.fill_circle(r.cx(), r.y + 31.0, 1.5, page_accent(a, *p).fade(ca));
         }
     }
+    let active_label = match a.page {
+        Page::Home => "HOME",
+        Page::Media => "MEDIA",
+        Page::Activity => "ACTIVITY",
+        Page::Agenda => "AGENDA",
+        Page::Shelf => "SHELF",
+        Page::Clipboard => "CLIPS",
+        Page::Apps => "APPS",
+        Page::Controls => "TOOLS",
+        Page::Stats => "STATS",
+        Page::Power => "POWER",
+        Page::Tasks => "FOCUS",
+        Page::Calculator => "CALCULATOR",
+        Page::Typing => "TYPING",
+        Page::WindowManager => "LAYOUTS",
+        Page::Mirror => "MIRROR",
+        Page::ShelfPreview => "QUICK LOOK",
+        Page::Processes => "PROCESSES",
+        Page::Game => "GAMES",
+        Page::Weather => "WEATHER",
+        Page::Assistant => "SPOTIFY QUEUE",
+    };
+    let hovered_label = (0..PAGES.len())
+        .find(|i| hot_k(a, Act::Tab(PAGES[*i])) > 0.12)
+        .map(|i| TAB_LABELS[i]);
+    g.text(
+        hovered_label.unwrap_or(active_label),
+        Rect::new(64.0, 44.0, EXP_W - 128.0, 19.0),
+        &f.small,
+        T2.fade(ca),
+        Align::Center,
+    );
 
     // the page itself, moved below the tab row; its hit boxes move with it
     let start = hits.len();
@@ -1093,17 +1869,35 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         Page::Game => {
             let (ox, oy) = ((EXP_W - crate::game::W) / 2.0, 14.0);
             if a.hub.is_playing() {
-                hits.push(Hit { r: Rect::new(ox, oy, crate::game::W, crate::game::H), act: Act::GameClick });
+                hits.push(Hit {
+                    r: Rect::new(ox, oy, crate::game::W, crate::game::H),
+                    act: Act::GameClick,
+                });
                 a.hub.draw(g, ox, oy, ca);
                 let r = Rect::new(ox + crate::game::W / 2.0 - 36.0, oy + 3.0, 72.0, 18.0);
-                hits.push(Hit { r, act: Act::GameBack });
-                g.fill_rrect(r, 9.0, (if hot(a, Act::GameBack) { HOVER } else { Color(0.0, 0.0, 0.0, 0.35) }).fade(ca));
+                hits.push(Hit {
+                    r,
+                    act: Act::GameBack,
+                });
+                g.fill_rrect(
+                    r,
+                    9.0,
+                    (if hot(a, Act::GameBack) {
+                        HOVER
+                    } else {
+                        Color(0.0, 0.0, 0.0, 0.35)
+                    })
+                    .fade(ca),
+                );
                 g.text("\u{2039} Games", r, &f.tiny, T1.fade(ca), Align::Center);
             } else {
                 let hot_tile = (0..4).find(|i| hot(a, Act::GamePick(*i)));
                 a.hub.draw_hub(g, ox, oy, ca, hot_tile);
                 for (i, r) in crate::games::Hub::tiles(ox, oy).iter().enumerate() {
-                    hits.push(Hit { r: *r, act: Act::GamePick(i) });
+                    hits.push(Hit {
+                        r: *r,
+                        act: Act::GamePick(i),
+                    });
                 }
             }
         }
@@ -1114,8 +1908,12 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         // snap when a tab transition begins or completes.
         let k = a.page_t * a.page_t * (3.0 - 2.0 * a.page_t);
         let mut gone = Vec::new();
-        g.shifted(0.0, CONTENT_Y - 6.0 * k, || draw_page(a.prev_page, ca * (1.0 - k), &mut gone));
-        g.shifted(0.0, CONTENT_Y + 8.0 * (1.0 - k), || draw_page(a.page, ca * k, hits));
+        g.shifted(0.0, CONTENT_Y - 6.0 * k, || {
+            draw_page(a.prev_page, ca * (1.0 - k), &mut gone)
+        });
+        g.shifted(0.0, CONTENT_Y + 8.0 * (1.0 - k), || {
+            draw_page(a.page, ca * k, hits)
+        });
     } else {
         g.shifted(0.0, CONTENT_Y, || draw_page(a.page, ca, hits));
     }
@@ -1137,64 +1935,213 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let overview = Rect::new(380.0, 77.0, 202.0, 65.0);
     // The entire Now Playing card opens the full media player. Individual
     // transport and volume hits are added later and take precedence.
-    hits.push(Hit { r: music, act: Act::Tab(Page::Media) });
-    hits.push(Hit { r: weather_card, act: Act::WeatherOpen });
-    hits.push(Hit { r: overview, act: Act::Tab(Page::Agenda) });
+    hits.push(Hit {
+        r: music,
+        act: Act::HomeLink(Page::Media),
+    });
+    hits.push(Hit {
+        r: weather_card,
+        act: Act::WeatherOpen,
+    });
+    hits.push(Hit {
+        r: overview,
+        act: Act::HomeLink(Page::Agenda),
+    });
     // One continuous composition instead of three competing dark-blue cards.
     // Hover is a material shift, not a thick outline.
-    let hero_hover = hot_k(a, Act::Tab(Page::Media));
+    let hero_hover = hot_k(a, Act::HomeLink(Page::Media));
     glass_card_k(a, music, 22.0, ca, hero_hover, glass_accent(a));
-    glass_card_k(a, Rect::new(380.0, 6.0, 202.0, 136.0), 22.0, ca,
-        hot_k(a, Act::WeatherOpen).max(hot_k(a, Act::Tab(Page::Agenda))), page_accent(a, Page::Agenda));
-    g.fill_rrect(Rect::new(392.0, 73.0, 178.0, 1.0), 0.5, Color::white(0.12 * ca));
-    if hot(a, Act::WeatherOpen) { g.fill_rrect(weather_card, 20.0, page_accent(a, Page::Agenda).fade(0.08 * ca)); }
-    if hot(a, Act::Tab(Page::Agenda)) { g.fill_rrect(overview, 20.0, page_accent(a, Page::Agenda).fade(0.08 * ca)); }
-    g.fill_rrect(Rect::new(35.0, 7.0, 306.0, 1.0), 0.5, if a.art.is_some() { a.accent.fade(0.38 * ca) } else { Color::white(0.12 * ca) });
+    glass_card_k(
+        a,
+        Rect::new(380.0, 6.0, 202.0, 136.0),
+        22.0,
+        ca,
+        hot_k(a, Act::WeatherOpen).max(hot_k(a, Act::HomeLink(Page::Agenda))),
+        page_accent(a, Page::Agenda),
+    );
+    g.fill_rrect(
+        Rect::new(392.0, 73.0, 178.0, 1.0),
+        0.5,
+        Color::white(0.12 * ca),
+    );
+    if hot(a, Act::WeatherOpen) {
+        g.fill_rrect(
+            weather_card,
+            20.0,
+            page_accent(a, Page::Agenda).fade(0.08 * ca),
+        );
+    }
+    if hot(a, Act::HomeLink(Page::Agenda)) {
+        g.fill_rrect(overview, 20.0, page_accent(a, Page::Agenda).fade(0.08 * ca));
+    }
+    g.fill_rrect(
+        Rect::new(35.0, 7.0, 306.0, 1.0),
+        0.5,
+        Color::white(0.23 * ca),
+    );
     if let Some(art) = &a.art {
         g.draw_bitmap(art, Rect::new(28.0, 18.0, 90.0, 90.0), 16.0, ca);
     } else if a.mascot_visible {
         draw_miso_at(a, ca, 73.0, 62.0, true);
     } else {
-        g.icon('\u{E8D6}', Rect::new(32.0, 28.0, 74.0, 66.0), &f.icon22, a.accent.fade(ca));
+        g.icon(
+            '\u{E8D6}',
+            Rect::new(32.0, 28.0, 74.0, 66.0),
+            &f.icon22,
+            a.accent.fade(ca),
+        );
     }
-    g.text("NOW PLAYING", Rect::new(128.0, 15.0, 212.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
-    let song = if a.mstate.has_track() { a.mstate.title.as_str() } else { "Nothing playing" };
-    g.text(song, Rect::new(128.0, 35.0, 208.0, 25.0), &f.body, T1.fade(ca), Align::Left);
-    g.text(&a.mstate.artist, Rect::new(128.0, 60.0, 208.0, 17.0), &f.tiny, T2.fade(ca), Align::Left);
+    g.text(
+        "NOW PLAYING",
+        Rect::new(128.0, 15.0, 212.0, 18.0),
+        &f.tiny,
+        glass_accent(a).fade(ca),
+        Align::Left,
+    );
+    let song = if a.mstate.has_track() {
+        a.mstate.title.as_str()
+    } else {
+        "Nothing playing"
+    };
+    g.text(
+        song,
+        Rect::new(128.0, 35.0, 208.0, 25.0),
+        &f.title,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        &a.mstate.artist,
+        Rect::new(128.0, 60.0, 208.0, 17.0),
+        &f.tiny,
+        T2.fade(ca),
+        Align::Left,
+    );
     for (r, act, icon) in [
         (Rect::new(154.0, 82.0, 27.0, 27.0), Act::Prev, '\u{E892}'),
-        (Rect::new(201.0, 80.0, 31.0, 31.0), Act::PlayPause, if a.mstate.playing { '\u{E769}' } else { '\u{E768}' }),
+        (
+            Rect::new(201.0, 80.0, 31.0, 31.0),
+            Act::PlayPause,
+            if a.mstate.playing {
+                '\u{E769}'
+            } else {
+                '\u{E768}'
+            },
+        ),
         (Rect::new(252.0, 82.0, 27.0, 27.0), Act::Next, '\u{E893}'),
     ] {
         hits.push(Hit { r, act });
-        if hot(a, act) { g.fill_rrect(r, 11.0, HOVER.fade(ca)); }
-        if act == Act::PlayPause { g.fill_circle(r.cx(), r.cy(), 16.0, Color::white(0.14 * ca)); }
+        if hot(a, act) {
+            g.fill_rrect(r, 11.0, HOVER.fade(ca));
+        }
+        if act == Act::PlayPause {
+            g.fill_circle(r.cx(), r.cy(), 16.0, glass_accent(a).fade(0.25 * ca));
+        }
         g.icon(icon, r, &f.icon14, T1.fade(ca));
     }
     if let Some(v) = a.spotify_vol {
         let mute = Rect::new(129.0, 113.0, 21.0, 21.0);
-        hits.push(Hit { r: mute, act: Act::SpotifyMute });
-        g.icon(if v < 0.001 { '\u{E74F}' } else { '\u{E767}' }, mute, &f.icon14, T2.fade(ca));
-        slider(a, Rect::new(157.0, 117.0, 144.0, 14.0), v, Act::SpotifyVolume, a.accent, ca, hits, true);
-        g.text(&format!("{}%", (v * 100.0).round() as u32), Rect::new(307.0, 115.0, 37.0, 18.0), &f.tiny, T2.fade(ca), Align::Right);
+        hits.push(Hit {
+            r: mute,
+            act: Act::SpotifyMute,
+        });
+        g.icon(
+            if v < 0.001 { '\u{E74F}' } else { '\u{E767}' },
+            mute,
+            &f.icon14,
+            T2.fade(ca),
+        );
+        slider(
+            a,
+            Rect::new(157.0, 117.0, 144.0, 14.0),
+            v,
+            Act::SpotifyVolume,
+            a.accent,
+            ca,
+            hits,
+            true,
+        );
+        g.text(
+            &format!("{}%", (v * 100.0).round() as u32),
+            Rect::new(307.0, 115.0, 37.0, 18.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Right,
+        );
     }
     let weather = crate::weather::snapshot();
-    g.text("RIGHT NOW", Rect::new(394.0, 11.0, 115.0, 17.0), &f.tiny, a.accent.fade(ca), Align::Left);
-    g.text(&format!("{hh:02}:{mm:02}"), Rect::new(394.0, 28.0, 101.0, 32.0), &f.title, T1.fade(ca), Align::Left);
-    g.text(&format!("{day:02}/{month:02}/{:02}", year.rem_euclid(100)), Rect::new(394.0, 56.0, 91.0, 13.0), &f.tiny, T3.fade(ca), Align::Left);
-    let wx_label = weather.temperature.map_or_else(|| "Weather +".to_string(), |t| format!("{}°", t.round() as i32));
-    g.text(&wx_label, Rect::new(486.0, 24.0, 82.0, 33.0), &f.title, T1.fade(ca), Align::Right);
-    g.text(if weather.city.is_empty() { "Set a city" } else { &weather.city }, Rect::new(484.0, 51.0, 84.0, 14.0), &f.tiny, T3.fade(ca), Align::Right);
-    g.text("UP NEXT", Rect::new(394.0, 82.0, 173.0, 18.0), &f.tiny, a.accent.fade(ca), Align::Left);
+    g.text(
+        "RIGHT NOW",
+        Rect::new(394.0, 11.0, 115.0, 17.0),
+        &f.tiny,
+        a.accent.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        &format!("{hh:02}:{mm:02}"),
+        Rect::new(394.0, 28.0, 101.0, 32.0),
+        &f.title,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        &format!("{day:02}/{month:02}/{:02}", year.rem_euclid(100)),
+        Rect::new(394.0, 56.0, 91.0, 13.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
+    let wx_label = weather.temperature.map_or_else(
+        || "Weather +".to_string(),
+        |t| format!("{}°", t.round() as i32),
+    );
+    g.text(
+        &wx_label,
+        Rect::new(486.0, 24.0, 82.0, 33.0),
+        &f.title,
+        T1.fade(ca),
+        Align::Right,
+    );
+    g.text(
+        if weather.city.is_empty() {
+            "Set a city"
+        } else {
+            &weather.city
+        },
+        Rect::new(484.0, 51.0, 84.0, 14.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Right,
+    );
+    g.text(
+        "UP NEXT",
+        Rect::new(394.0, 82.0, 173.0, 18.0),
+        &f.tiny,
+        a.accent.fade(ca),
+        Align::Left,
+    );
     let (now, _) = crate::cal::now();
     let next = crate::cal::LABELED_EVENTS.lock().ok().and_then(|events| {
-        events.iter().find(|e| e.event.start >= if e.event.all_day { now.div_euclid(86400) * 86400 } else { now - 60 }).cloned()
+        events
+            .iter()
+            .find(|e| {
+                e.event.start
+                    >= if e.event.all_day {
+                        now.div_euclid(86400) * 86400
+                    } else {
+                        now - 60
+                    }
+            })
+            .cloned()
     });
     if let Some(entry) = next {
         const CAL_COLORS: [Color; 6] = [
-            Color(0.52, 0.74, 1.0, 1.0), Color(0.95, 0.61, 0.45, 1.0),
-            Color(0.61, 0.85, 0.53, 1.0), Color(0.78, 0.63, 0.98, 1.0),
-            Color(0.99, 0.78, 0.39, 1.0), Color(0.45, 0.83, 0.80, 1.0),
+            Color(0.52, 0.74, 1.0, 1.0),
+            Color(0.95, 0.61, 0.45, 1.0),
+            Color(0.61, 0.85, 0.53, 1.0),
+            Color(0.78, 0.63, 0.98, 1.0),
+            Color(0.99, 0.78, 0.39, 1.0),
+            Color(0.45, 0.83, 0.80, 1.0),
         ];
         let event_h = entry.event.start.rem_euclid(86400) / 3600;
         let event_m = entry.event.start.rem_euclid(3600) / 60;
@@ -1206,37 +2153,126 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         };
         let col = CAL_COLORS[entry.color_index % CAL_COLORS.len()];
         g.fill_circle(397.0, 111.0, 3.5, col.fade(ca));
-        g.text(&entry.calendar, Rect::new(408.0, 101.0, 158.0, 20.0), &f.tiny, col.fade(ca), Align::Left);
-        let time_label = if entry.event.all_day { "All day".to_string() } else { format!("{event_h:02}:{event_m:02}") };
-        g.text(&format!("{when} {time_label} · {}", entry.event.title), Rect::new(394.0, 119.0, 176.0, 18.0), &f.tiny, T2.fade(ca), Align::Left);
+        g.text(
+            &entry.calendar,
+            Rect::new(408.0, 101.0, 158.0, 20.0),
+            &f.tiny,
+            col.fade(ca),
+            Align::Left,
+        );
+        let time_label = if entry.event.all_day {
+            "All day".to_string()
+        } else {
+            format!("{event_h:02}:{event_m:02}")
+        };
+        g.text(
+            &format!("{when} {time_label} · {}", entry.event.title),
+            Rect::new(394.0, 119.0, 176.0, 18.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
     } else {
-        g.text(&format!("{day:02}/{month:02} · Nothing upcoming"), Rect::new(394.0, 107.0, 171.0, 25.0), &f.tiny, T2.fade(ca), Align::Left);
+        g.text(
+            &format!("{day:02}/{month:02} · Nothing upcoming"),
+            Rect::new(394.0, 107.0, 171.0, 25.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
     }
 
     let shortcuts = [
-        ("Clipboard", "Recent copied items".into(), Page::Clipboard, '\u{E8C8}'),
-        ("Shelf", "Drop and retrieve files".into(), Page::Shelf, '\u{E8B7}'),
-        ("Activity", format!("{} notifications", a.system_notices.len()), Page::Activity, '\u{E7F4}'),
-        ("Focus", if a.timer_running() { "Timer running".into() } else { "Timer & to-do list".into() }, Page::Tasks, '\u{E823}'),
+        (
+            "Clipboard",
+            "Recent copied items".into(),
+            Page::Clipboard,
+            '\u{E8C8}',
+        ),
+        (
+            "Shelf",
+            "Drop and retrieve files".into(),
+            Page::Shelf,
+            '\u{E8B7}',
+        ),
+        (
+            "Activity",
+            format!("{} notifications", a.system_notices.len()),
+            Page::Activity,
+            '\u{E7F4}',
+        ),
+        (
+            "Focus",
+            if a.timer_running() {
+                "Timer running".into()
+            } else {
+                "Timer & to-do list".into()
+            },
+            Page::Tasks,
+            '\u{E823}',
+        ),
     ];
     let dock = Rect::new(18.0, 153.0, 564.0, 48.0);
     glass_card(a, dock, 18.0, ca, false);
     for (i, (title, _sub, page, glyph)) in shortcuts.iter().enumerate() {
         let r = Rect::new(18.0 + i as f32 * 141.0, 153.0, 141.0, 48.0);
-        let act = Act::Tab(*page);
+        let act = Act::HomeLink(*page);
         hits.push(Hit { r, act });
         let hovered = hot_k(a, act);
-        if hovered > 0.01 { g.fill_rrect(Rect::new(r.x + 3.0, r.y + 4.0, r.w - 6.0, 40.0), 15.0, page_accent(a, *page).fade(0.08 * hovered * ca)); }
-        if i > 0 { g.fill_rrect(Rect::new(r.x, r.y + 12.0, 1.0, 23.0), 0.5, Color::white(0.10 * ca)); }
-        g.icon(*glyph, Rect::new(r.x + 17.0, r.y + 13.0, 22.0, 21.0), &f.icon14, a.accent.fade(ca));
-        g.text(title, Rect::new(r.x + 45.0, r.y + 11.0, 87.0, 25.0), &f.small, T1.fade(ca), Align::Left);
+        if hovered > 0.01 {
+            g.fill_rrect(
+                Rect::new(r.x + 3.0, r.y + 4.0, r.w - 6.0, 40.0),
+                15.0,
+                page_accent(a, *page).fade(0.12 * hovered * ca),
+            );
+        }
+        if i > 0 {
+            g.fill_rrect(
+                Rect::new(r.x, r.y + 12.0, 1.0, 23.0),
+                0.5,
+                Color::white(0.10 * ca),
+            );
+        }
+        g.icon(
+            *glyph,
+            Rect::new(r.x + 17.0, r.y + 13.0, 22.0, 21.0),
+            &f.icon14,
+            page_accent(a, *page).fade(ca),
+        );
+        g.text(
+            title,
+            Rect::new(r.x + 45.0, r.y + 11.0, 87.0, 25.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
     }
     let ask = Rect::new(18.0, 211.0, 564.0, 32.0);
-    hits.push(Hit { r: ask, act: Act::AssistantOpen });
+    hits.push(Hit {
+        r: ask,
+        act: Act::AssistantOpen,
+    });
     glass_card(a, ask, 12.0, ca * 0.7, hot(a, Act::AssistantOpen));
-    g.icon('\u{E8D6}', Rect::new(32.0, 217.0, 24.0, 20.0), &f.icon14, glass_accent(a).fade(ca));
-    g.text("Quick Spotify queue", Rect::new(65.0, 214.0, 300.0, 25.0), &f.small, T1.fade(ca), Align::Left);
-    g.text("Find a track to add next  ›", Rect::new(350.0, 214.0, 212.0, 25.0), &f.tiny, T3.fade(ca), Align::Right);
+    g.icon(
+        '\u{E8D6}',
+        Rect::new(32.0, 217.0, 24.0, 20.0),
+        &f.icon14,
+        glass_accent(a).fade(ca),
+    );
+    g.text(
+        "Quick Spotify queue",
+        Rect::new(65.0, 214.0, 300.0, 25.0),
+        &f.small,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "Find a track to add next  ›",
+        Rect::new(350.0, 214.0, 212.0, 25.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Right,
+    );
 }
 
 fn page_assistant(a: &App, ca: f32, hits: &mut Vec<Hit>) {
@@ -1246,70 +2282,271 @@ fn page_assistant(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     if a.spotify_client_id.is_empty() {
         let panel = Rect::new(20.0, 0.0, 560.0, 242.0);
         glass_card(a, panel, 20.0, ca, false);
-        g.text("YOUR MUSIC, ONE QUICK SEARCH", Rect::new(40.0, 16.0, 510.0, 18.0), &f.tiny, accent.fade(ca), Align::Left);
-        g.text("Add a song to your queue", Rect::new(40.0, 38.0, 510.0, 30.0), &f.title, T1.fade(ca), Align::Left);
-        g.text("Connect once with Spotify to search and queue tracks here.", Rect::new(40.0, 75.0, 510.0, 22.0), &f.small, T2.fade(ca), Align::Left);
-        g.text("In your Spotify Developer app, add this redirect address:", Rect::new(40.0, 112.0, 510.0, 19.0), &f.small, T1.fade(ca), Align::Left);
-        g.fill_rrect(Rect::new(40.0, 137.0, 510.0, 32.0), 10.0, Color(0.0, 0.0, 0.0, 0.20 * ca));
-        g.text(crate::spotify::REDIRECT_URI, Rect::new(51.0, 141.0, 488.0, 23.0), &f.small, T2.fade(ca), Align::Left);
+        g.text(
+            "YOUR MUSIC, ONE QUICK SEARCH",
+            Rect::new(40.0, 16.0, 510.0, 18.0),
+            &f.tiny,
+            accent.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Add a song to your queue",
+            Rect::new(40.0, 38.0, 510.0, 30.0),
+            &f.title,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Connect once with Spotify to search and queue tracks here.",
+            Rect::new(40.0, 75.0, 510.0, 22.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "In your Spotify Developer app, add this redirect address:",
+            Rect::new(40.0, 112.0, 510.0, 19.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.fill_rrect(
+            Rect::new(40.0, 137.0, 510.0, 32.0),
+            10.0,
+            Color(0.0, 0.0, 0.0, 0.20 * ca),
+        );
+        g.text(
+            crate::spotify::REDIRECT_URI,
+            Rect::new(51.0, 141.0, 488.0, 23.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
         let set = Rect::new(40.0, 185.0, 240.0, 38.0);
-        hits.push(Hit { r: set, act: Act::SpotifyClientId });
+        hits.push(Hit {
+            r: set,
+            act: Act::SpotifyClientId,
+        });
         glass_card(a, set, 13.0, ca, hot(a, Act::SpotifyClientId));
-        g.icon('\u{E713}', Rect::new(52.0, 192.0, 22.0, 22.0), &f.icon14, accent.fade(ca));
-        let id_label = if a.spotify_client_id_entry { a.entering.as_ref().map(|v| String::from_utf16_lossy(v)).unwrap_or_default() } else { "Enter Spotify Client ID".to_string() };
-        g.text(&id_label, Rect::new(78.0, 188.0, 194.0, 30.0), &f.small, T1.fade(ca), Align::Left);
-        g.text(&a.spotify_status, Rect::new(292.0, 188.0, 254.0, 32.0), &f.tiny, T2.fade(ca), Align::Left);
+        g.icon(
+            '\u{E713}',
+            Rect::new(52.0, 192.0, 22.0, 22.0),
+            &f.icon14,
+            accent.fade(ca),
+        );
+        let id_label = if a.spotify_client_id_entry {
+            a.entering
+                .as_ref()
+                .map(|v| String::from_utf16_lossy(v))
+                .unwrap_or_default()
+        } else {
+            "Enter Spotify Client ID".to_string()
+        };
+        g.text(
+            &id_label,
+            Rect::new(78.0, 188.0, 194.0, 30.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &a.spotify_status,
+            Rect::new(292.0, 188.0, 254.0, 32.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
         return;
     }
 
     if !crate::spotify::connected() {
         let panel = Rect::new(20.0, 0.0, 560.0, 242.0);
         glass_card(a, panel, 20.0, ca, false);
-        g.text("SPOTIFY QUEUE", Rect::new(40.0, 16.0, 510.0, 18.0), &f.tiny, accent.fade(ca), Align::Left);
-        g.text("Connect your account", Rect::new(40.0, 39.0, 510.0, 30.0), &f.title, T1.fade(ca), Align::Left);
-        g.text("Sign in in your browser. Queueing requires Spotify Premium + active playback.", Rect::new(40.0, 78.0, 510.0, 24.0), &f.small, T2.fade(ca), Align::Left);
+        g.text(
+            "SPOTIFY QUEUE",
+            Rect::new(40.0, 16.0, 510.0, 18.0),
+            &f.tiny,
+            accent.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Connect your account",
+            Rect::new(40.0, 39.0, 510.0, 30.0),
+            &f.title,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Sign in in your browser. Queueing requires Spotify Premium + active playback.",
+            Rect::new(40.0, 78.0, 510.0, 24.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
         let connect = Rect::new(40.0, 122.0, 250.0, 42.0);
-        hits.push(Hit { r: connect, act: Act::SpotifyConnect });
+        hits.push(Hit {
+            r: connect,
+            act: Act::SpotifyConnect,
+        });
         glass_card(a, connect, 14.0, ca, hot(a, Act::SpotifyConnect));
-        g.icon('\u{E774}', Rect::new(53.0, 131.0, 23.0, 23.0), &f.icon14, accent.fade(ca));
-        g.text(if a.spotify_busy { "Waiting for Spotify…" } else { "Connect Spotify" }, Rect::new(82.0, 126.0, 194.0, 34.0), &f.small, T1.fade(ca), Align::Left);
+        g.icon(
+            '\u{E774}',
+            Rect::new(53.0, 131.0, 23.0, 23.0),
+            &f.icon14,
+            accent.fade(ca),
+        );
+        g.text(
+            if a.spotify_busy {
+                "Waiting for Spotify…"
+            } else {
+                "Connect Spotify"
+            },
+            Rect::new(82.0, 126.0, 194.0, 34.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         let change = Rect::new(40.0, 174.0, 250.0, 31.0);
-        hits.push(Hit { r: change, act: Act::SpotifyClientId });
-        g.text("Change Client ID", change, &f.tiny, T3.fade(ca), Align::Left);
-        g.text(&a.spotify_status, Rect::new(312.0, 124.0, 236.0, 67.0), &f.small, T2.fade(ca), Align::Left);
-        g.text("Your refresh token is encrypted for this Windows account.", Rect::new(40.0, 215.0, 510.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
+        hits.push(Hit {
+            r: change,
+            act: Act::SpotifyClientId,
+        });
+        g.text(
+            "Change Client ID",
+            change,
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &a.spotify_status,
+            Rect::new(312.0, 124.0, 236.0, 67.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Your refresh token is encrypted for this Windows account.",
+            Rect::new(40.0, 215.0, 510.0, 17.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
         return;
     }
 
     let entry = Rect::new(20.0, 2.0, 441.0, 40.0);
-    hits.push(Hit { r: entry, act: Act::SpotifySearchInput });
-    glass_card_k(a, entry, 13.0, ca, hot_k(a, Act::SpotifySearchInput), accent);
-    g.icon('\u{E721}', Rect::new(31.0, 10.0, 23.0, 23.0), &f.icon14, accent.fade(ca));
-    let query = if a.spotify_query_entry { a.entering.as_ref().map(|s| String::from_utf16_lossy(s)).unwrap_or_default() } else { a.spotify_query.clone() };
-    g.text(if query.is_empty() { "Search songs or artists…" } else { &query }, Rect::new(61.0, 6.0, 385.0, 31.0), &f.body, (if query.is_empty() { T3 } else { T1 }).fade(ca), Align::Left);
+    hits.push(Hit {
+        r: entry,
+        act: Act::SpotifySearchInput,
+    });
+    glass_card_k(
+        a,
+        entry,
+        13.0,
+        ca,
+        hot_k(a, Act::SpotifySearchInput),
+        accent,
+    );
+    g.icon(
+        '\u{E721}',
+        Rect::new(31.0, 10.0, 23.0, 23.0),
+        &f.icon14,
+        accent.fade(ca),
+    );
+    let query = if a.spotify_query_entry {
+        a.entering
+            .as_ref()
+            .map(|s| String::from_utf16_lossy(s))
+            .unwrap_or_default()
+    } else {
+        a.spotify_query.clone()
+    };
+    g.text(
+        if query.is_empty() {
+            "Search songs or artists…"
+        } else {
+            &query
+        },
+        Rect::new(61.0, 6.0, 385.0, 31.0),
+        &f.body,
+        (if query.is_empty() { T3 } else { T1 }).fade(ca),
+        Align::Left,
+    );
     let search = Rect::new(470.0, 2.0, 110.0, 40.0);
-    hits.push(Hit { r: search, act: Act::SpotifySearch });
+    hits.push(Hit {
+        r: search,
+        act: Act::SpotifySearch,
+    });
     glass_card(a, search, 13.0, ca, hot(a, Act::SpotifySearch));
     g.text("Search", search, &f.small, accent.fade(ca), Align::Center);
-    g.text(&a.spotify_status, Rect::new(24.0, 46.0, 548.0, 18.0), &f.tiny, T2.fade(ca), Align::Left);
+    g.text(
+        &a.spotify_status,
+        Rect::new(24.0, 46.0, 548.0, 18.0),
+        &f.tiny,
+        T2.fade(ca),
+        Align::Left,
+    );
     for (i, track) in a.spotify_tracks.iter().take(5).enumerate() {
         let y = 68.0 + i as f32 * 34.0;
         let row = Rect::new(20.0, y, 560.0, 30.0);
         let act = Act::SpotifyQueue(i);
         hits.push(Hit { r: row, act });
         glass_card_k(a, row, 9.0, ca, hot_k(a, act), accent);
-        g.text(&track.title, Rect::new(31.0, y + 1.0, 382.0, 15.0), &f.small, T1.fade(ca), Align::Left);
-        g.text(&format!("{} · {}", track.artist, track.album), Rect::new(31.0, y + 15.0, 390.0, 12.0), &f.tiny, T3.fade(ca), Align::Left);
-        g.text("+ Queue", Rect::new(449.0, y + 2.0, 117.0, 25.0), &f.small, accent.fade(ca), Align::Right);
+        g.text(
+            &track.title,
+            Rect::new(31.0, y + 1.0, 382.0, 15.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &format!("{} · {}", track.artist, track.album),
+            Rect::new(31.0, y + 15.0, 390.0, 12.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "+ Queue",
+            Rect::new(449.0, y + 2.0, 117.0, 25.0),
+            &f.small,
+            accent.fade(ca),
+            Align::Right,
+        );
     }
     let disconnect = Rect::new(20.0, 242.0, 130.0, 18.0);
-    hits.push(Hit { r: disconnect, act: Act::SpotifyDisconnect });
-    g.text("Remove local connection", disconnect, &f.tiny, T3.fade(ca), Align::Left);
+    hits.push(Hit {
+        r: disconnect,
+        act: Act::SpotifyDisconnect,
+    });
+    g.text(
+        "Remove local connection",
+        disconnect,
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
     let reconnect = Rect::new(470.0, 242.0, 110.0, 18.0);
-    hits.push(Hit { r: reconnect, act: Act::SpotifyConnect });
-    g.text("Reconnect", reconnect, &f.tiny, accent.fade(ca), Align::Right);
+    hits.push(Hit {
+        r: reconnect,
+        act: Act::SpotifyConnect,
+    });
+    g.text(
+        "Reconnect",
+        reconnect,
+        &f.tiny,
+        accent.fade(ca),
+        Align::Right,
+    );
     if a.spotify_tracks.is_empty() && !a.spotify_busy {
-        g.text("Choose a result to add it after the current track.", Rect::new(24.0, 86.0, 548.0, 26.0), &f.small, T3.fade(ca), Align::Center);
+        g.text(
+            "Choose a result to add it after the current track.",
+            Rect::new(24.0, 86.0, 548.0, 26.0),
+            &f.small,
+            T3.fade(ca),
+            Align::Center,
+        );
     }
 }
 
@@ -1322,56 +2559,204 @@ fn page_agenda(a: &App, ca: f32) {
     static HAS_EXTRA_FEEDS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     let connected = !a.cfg.calendar_url.trim().is_empty()
         || *HAS_EXTRA_FEEDS.get_or_init(|| !crate::store::load_calendar_feeds().is_empty());
-    g.fill_rrect(Rect::new(20.0, 2.0, 560.0, 42.0), 14.0, glass_accent(a).fade(0.12 * ca));
-    g.fill_rrect(Rect::new(20.0, 2.0, 3.0, 42.0), 1.5, glass_accent(a).fade(ca));
+    g.fill_rrect(
+        Rect::new(20.0, 2.0, 560.0, 42.0),
+        14.0,
+        glass_accent(a).fade(0.12 * ca),
+    );
+    g.fill_rrect(
+        Rect::new(20.0, 2.0, 3.0, 42.0),
+        1.5,
+        glass_accent(a).fade(ca),
+    );
     if !connected {
-        g.text("YOUR DAY", Rect::new(35.0, 5.0, 145.0, 15.0), &f.tiny, glass_accent(a).fade(ca), Align::Left);
-        g.text("Connect a calendar", Rect::new(35.0, 19.0, 300.0, 21.0), &f.body, T1.fade(ca), Align::Left);
-        g.text("EXAMPLE EVENTS", Rect::new(424.0, 13.0, 140.0, 18.0), &f.tiny, T3.fade(ca), Align::Right);
+        g.text(
+            "YOUR DAY",
+            Rect::new(35.0, 5.0, 145.0, 15.0),
+            &f.tiny,
+            glass_accent(a).fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "Connect a calendar",
+            Rect::new(35.0, 19.0, 300.0, 21.0),
+            &f.body,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "EXAMPLE EVENTS",
+            Rect::new(424.0, 13.0, 140.0, 18.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Right,
+        );
         for (i, (when, event, tint)) in [
-            ("Today  15:00", "Web development", Color(0.50, 0.75, 1.0, 1.0)),
+            (
+                "Today  15:00",
+                "Web development",
+                Color(0.50, 0.75, 1.0, 1.0),
+            ),
             ("Tomorrow", "Gym session", Color(0.49, 0.85, 0.64, 1.0)),
-        ].iter().enumerate() {
+        ]
+        .iter()
+        .enumerate()
+        {
             let y = 52.0 + i as f32 * 36.0;
             g.fill_circle(34.0, y + 15.0, 4.0, tint.fade(ca));
             g.fill_rrect(Rect::new(47.0, y, 531.0, 31.0), 9.0, SURF.fade(ca));
-            g.text(when, Rect::new(60.0, y + 4.0, 119.0, 23.0), &f.tiny, T2.fade(ca), Align::Left);
-            g.text(event, Rect::new(185.0, y + 4.0, 364.0, 23.0), &f.small, T1.fade(ca), Align::Left);
+            g.text(
+                when,
+                Rect::new(60.0, y + 4.0, 119.0, 23.0),
+                &f.tiny,
+                T2.fade(ca),
+                Align::Left,
+            );
+            g.text(
+                event,
+                Rect::new(185.0, y + 4.0, 364.0, 23.0),
+                &f.small,
+                T1.fade(ca),
+                Align::Left,
+            );
         }
-        g.text("These are examples. No calendar is connected.", Rect::new(48.0, 126.0, 530.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
-        g.text("01  Copy your calendar's secret iCal URL", Rect::new(27.0, 151.0, 550.0, 18.0), &f.small, T2.fade(ca), Align::Left);
-        g.text("02  Add Name|URL to %APPDATA%\\Nock\\calendars.txt", Rect::new(27.0, 172.0, 550.0, 18.0), &f.small, T2.fade(ca), Align::Left);
-        g.text("03  Restart Notchix. Keep the URL private.", Rect::new(27.0, 193.0, 550.0, 18.0), &f.small, T2.fade(ca), Align::Left);
+        g.text(
+            "These are examples. No calendar is connected.",
+            Rect::new(48.0, 126.0, 530.0, 17.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "01  Copy your calendar's secret iCal URL",
+            Rect::new(27.0, 151.0, 550.0, 18.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "02  Add Name|URL to %APPDATA%\\Nock\\calendars.txt",
+            Rect::new(27.0, 172.0, 550.0, 18.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            "03  Restart Notchix. Keep the URL private.",
+            Rect::new(27.0, 193.0, 550.0, 18.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Left,
+        );
         return;
     }
-    g.text("YOUR DAY", Rect::new(35.0, 5.0, 145.0, 15.0), &f.tiny, glass_accent(a).fade(ca), Align::Left);
-    g.text("Up next", Rect::new(35.0, 19.0, 260.0, 21.0), &f.body, T1.fade(ca), Align::Left);
-    g.text("READ ONLY · HOURLY SYNC", Rect::new(359.0, 15.0, 204.0, 17.0), &f.tiny, T3.fade(ca), Align::Right);
+    g.text(
+        "YOUR DAY",
+        Rect::new(35.0, 5.0, 145.0, 15.0),
+        &f.tiny,
+        glass_accent(a).fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "Up next",
+        Rect::new(35.0, 19.0, 260.0, 21.0),
+        &f.body,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "READ ONLY · HOURLY SYNC",
+        Rect::new(359.0, 15.0, 204.0, 17.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Right,
+    );
     let events = crate::cal::LABELED_EVENTS.lock().unwrap();
     let mut found = 0;
-    for item in events.iter().filter(|entry| entry.event.start >= if entry.event.all_day { now.div_euclid(86400) * 86400 } else { now - 60 }).take(5) {
+    for item in events
+        .iter()
+        .filter(|entry| {
+            entry.event.start
+                >= if entry.event.all_day {
+                    now.div_euclid(86400) * 86400
+                } else {
+                    now - 60
+                }
+        })
+        .take(5)
+    {
         let y = 49.0 + found as f32 * 31.0;
         found += 1;
         let r = Rect::new(48.0, y, EXP_W - 68.0, 28.0);
-        g.fill_rrect(r, 8.0, (if found % 2 == 1 { SURF } else { Color::white(0.035) }).fade(ca));
+        g.fill_rrect(
+            r,
+            8.0,
+            (if found % 2 == 1 {
+                SURF
+            } else {
+                Color::white(0.035)
+            })
+            .fade(ca),
+        );
         let color = match item.color_index % 6 {
-            0 => Color(0.52, 0.74, 1.0, 1.0), 1 => Color(0.95, 0.61, 0.45, 1.0),
-            2 => Color(0.61, 0.85, 0.53, 1.0), 3 => Color(0.78, 0.63, 0.98, 1.0),
-            4 => Color(0.99, 0.78, 0.39, 1.0), _ => Color(0.45, 0.83, 0.80, 1.0),
+            0 => Color(0.52, 0.74, 1.0, 1.0),
+            1 => Color(0.95, 0.61, 0.45, 1.0),
+            2 => Color(0.61, 0.85, 0.53, 1.0),
+            3 => Color(0.78, 0.63, 0.98, 1.0),
+            4 => Color(0.99, 0.78, 0.39, 1.0),
+            _ => Color(0.45, 0.83, 0.80, 1.0),
         };
         g.fill_circle(33.0, y + 14.0, 4.0, color.fade(ca));
         let time = item.event.start.rem_euclid(86400);
         let days = (item.event.start.div_euclid(86400) - now.div_euclid(86400)).max(0);
-        let day = match days { 0 => "Today".into(), 1 => "Tomorrow".into(), n => format!("In {n} days") };
-        let time_label = if item.event.all_day { "All day".into() } else { format!("{:02}:{:02}", time / 3600, (time % 3600) / 60) };
-        g.text(&format!("{} {}", day, time_label), Rect::new(60.0, y + 2.0, 116.0, 24.0), &f.tiny, T2.fade(ca), Align::Left);
-        g.text(&item.event.title, Rect::new(180.0, y + 2.0, 247.0, 24.0), &f.small, T1.fade(ca), Align::Left);
-        g.text(&item.calendar, Rect::new(435.0, y + 2.0, 130.0, 24.0), &f.tiny, color.fade(ca), Align::Right);
+        let day = match days {
+            0 => "Today".into(),
+            1 => "Tomorrow".into(),
+            n => format!("In {n} days"),
+        };
+        let time_label = if item.event.all_day {
+            "All day".into()
+        } else {
+            format!("{:02}:{:02}", time / 3600, (time % 3600) / 60)
+        };
+        g.text(
+            &format!("{} {}", day, time_label),
+            Rect::new(60.0, y + 2.0, 116.0, 24.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &item.event.title,
+            Rect::new(180.0, y + 2.0, 247.0, 24.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &item.calendar,
+            Rect::new(435.0, y + 2.0, 130.0, 24.0),
+            &f.tiny,
+            color.fade(ca),
+            Align::Right,
+        );
     }
     if found == 0 {
-        g.text("Nothing scheduled in the next 14 days.", Rect::new(30.0, 76.0, EXP_W - 60.0, 33.0), &f.small, T2.fade(ca), Align::Center);
+        g.text(
+            "Nothing scheduled in the next 14 days.",
+            Rect::new(30.0, 76.0, EXP_W - 60.0, 33.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Center,
+        );
     }
-    g.text("The calendar links remain on your PC. Events can't be edited here.", Rect::new(24.0, 209.0, EXP_W - 48.0, 16.0), &f.tiny, T3.fade(ca), Align::Center);
+    g.text(
+        "The calendar links remain on your PC. Events can't be edited here.",
+        Rect::new(24.0, 209.0, EXP_W - 48.0, 16.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Center,
+    );
 }
 
 fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
@@ -1406,41 +2791,80 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         return;
     }
 
-    if a.lyrics_view {
-        page_media_lyrics(a, m, ca, hits);
+    if !a.lyrics_enabled {
+        page_media_single(a, m, art.as_ref(), loading.is_some(), ca, hits);
         return;
     }
 
-    // A compact, wide player inspired by the supplied notch references:
-    // thumbnail and transport on the left, always-visible lyrics on the
-    // right, and one shared progress line along the bottom.
+    // A compact Now Playing header leads into a wide lyric stage. This gives
+    // lyrics enough room to breathe while keeping artwork and transport easy
+    // to scan at the top of the card.
     let accent = glass_accent(a);
     let player_card = Rect::new(16.0, 8.0, EXP_W - 32.0, 232.0);
-    glass_card(a, player_card, 24.0, ca, false);
-    g.fill_rrect(Rect::new(24.0, 16.0, EXP_W - 48.0, 216.0), 19.0, Color::white(0.022 * ca));
+    let player_hover = hot_k(a, Act::PlayPause)
+        .max(hot_k(a, Act::Next))
+        .max(hot_k(a, Act::Prev));
+    glass_card_k(a, player_card, 24.0, ca, player_hover * 0.3, accent);
+    g.fill_rrect(
+        Rect::new(24.0, 16.0, EXP_W - 48.0, 94.0),
+        18.0,
+        Color::white(0.042 * ca),
+    );
+    g.stroke_rrect(
+        Rect::new(24.5, 16.5, EXP_W - 49.0, 93.0),
+        18.0,
+        Color::white(0.10 * ca),
+        0.8,
+    );
+    g.fill_rrect(
+        Rect::new(24.0, 116.0, EXP_W - 48.0, 116.0),
+        19.0,
+        Color::white(0.018 * ca),
+    );
+    g.stroke_rrect(
+        Rect::new(24.5, 116.5, EXP_W - 49.0, 115.0),
+        19.0,
+        Color::white(0.07 * ca),
+        0.8,
+    );
 
-    let ar = Rect::new(28.0, 27.0, 86.0, 86.0);
+    let ar = Rect::new(38.0, 26.0, 74.0, 74.0);
     match art {
         Some(bmp) => g.draw_bitmap(bmp, ar, 14.0, ca),
         None => {
             g.fill_rrect(ar, 14.0, Color::white(0.10 * ca));
-            g.text("\u{266A}", ar, &f.big, T3.fade(ca), Align::Center);
+            g.text("\u{266A}", ar, &f.title, T3.fade(ca), Align::Center);
         }
     }
     if loading.is_some() {
         g.fill_rrect(ar, 14.0, Color(0.0, 0.0, 0.0, 0.5 * ca));
         spinner(g, ar.cx(), ar.cy(), 18.0, a.spin_t, a.accent, ca);
     }
-    g.stroke_rrect(Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0), 15.0, Color::white(0.25 * ca), 0.8);
+    g.stroke_rrect(
+        Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0),
+        15.0,
+        Color::white(0.25 * ca),
+        0.8,
+    );
     g.stroke_rrect(ar, 14.0, accent.fade(0.42 * ca), 1.0);
     if m.playing {
-        g.stroke_rrect(Rect::new(ar.x - 1.4, ar.y - 1.4, ar.w + 2.8, ar.h + 2.8), 15.4,
-            accent.fade((0.10 + 0.12 * a.level) * ca), 1.1);
+        g.stroke_rrect(
+            Rect::new(ar.x - 1.4, ar.y - 1.4, ar.w + 2.8, ar.h + 2.8),
+            15.4,
+            accent.fade((0.10 + 0.12 * a.level) * ca),
+            1.1,
+        );
     }
 
     let tx = 126.0;
-    let tw = 190.0;
-    g.text("NOW PLAYING", Rect::new(tx, 25.0, tw, 16.0), &f.tiny, accent.fade(ca), Align::Left);
+    let tw = 230.0;
+    g.text(
+        "NOW PLAYING",
+        Rect::new(tx, 25.0, tw, 16.0),
+        &f.tiny,
+        accent.fade(ca),
+        Align::Left,
+    );
     let title = if m.title.is_empty() {
         "Unknown title"
     } else {
@@ -1448,8 +2872,8 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     };
     g.text(
         title,
-        Rect::new(tx, 44.0, tw, 27.0),
-        &f.body,
+        Rect::new(tx, 43.0, tw, 27.0),
+        &f.title,
         T1.fade(ca),
         Align::Left,
     );
@@ -1461,69 +2885,239 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     };
     g.text(
         sub,
-        Rect::new(tx, 70.0, tw, 20.0),
+        Rect::new(tx, 71.0, tw, 20.0),
         &f.small,
         (if loading.is_some() { a.accent } else { T2 }).fade(ca),
         Align::Left,
     );
     // Windows media sessions sometimes expose a hexadecimal application ID.
     // That is not useful information to show in a polished player.
-    let friendly_app = !m.app.is_empty()
-        && !(m.app.len() >= 12 && m.app.chars().all(|c| c.is_ascii_hexdigit()));
-    g.text(if friendly_app { &m.app } else { "MEDIA SESSION" }, Rect::new(tx, 91.0, tw, 15.0), &f.tiny, T3.fade(ca), Align::Left);
+    let friendly_app =
+        !m.app.is_empty() && !(m.app.len() >= 12 && m.app.chars().all(|c| c.is_ascii_hexdigit()));
+    if let Some(v) = a.spotify_vol {
+        let mute = Rect::new(tx, 91.0, 18.0, 16.0);
+        hits.push(Hit {
+            r: mute,
+            act: Act::SpotifyMute,
+        });
+        g.icon(
+            if v < 0.001 { '\u{E74F}' } else { '\u{E767}' },
+            mute,
+            &f.icon14,
+            T2.fade(ca),
+        );
+        slider(
+            a,
+            Rect::new(tx + 24.0, 92.0, 150.0, 14.0),
+            v,
+            Act::SpotifyVolume,
+            accent,
+            ca,
+            hits,
+            true,
+        );
+    }
+    g.text(
+        if friendly_app {
+            &m.app
+        } else {
+            "MEDIA SESSION"
+        },
+        Rect::new(tx + 183.0, 91.0, 145.0, 16.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
 
     // Transport stays compact and grouped directly below the track details.
-    let prev = Rect::new(155.0, 112.0, 40.0, 40.0);
-    let play = Rect::new(207.0, 108.0, 48.0, 48.0);
-    let next = Rect::new(267.0, 112.0, 40.0, 40.0);
-    hits.push(Hit { r: prev, act: Act::Prev });
-    hits.push(Hit { r: play, act: Act::PlayPause });
-    hits.push(Hit { r: next, act: Act::Next });
-    for (r, act, glyph, ok) in [(prev, Act::Prev, '\u{E892}', m.can_prev), (next, Act::Next, '\u{E893}', m.can_next)] {
-        if hot(a, act) { g.fill_rrect(r, 18.0, Color::white(0.10 * ca)); }
+    let prev = Rect::new(397.0, 45.0, 34.0, 34.0);
+    let play = Rect::new(445.0, 39.0, 46.0, 46.0);
+    let next = Rect::new(505.0, 45.0, 34.0, 34.0);
+    hits.push(Hit {
+        r: prev,
+        act: Act::Prev,
+    });
+    hits.push(Hit {
+        r: play,
+        act: Act::PlayPause,
+    });
+    hits.push(Hit {
+        r: next,
+        act: Act::Next,
+    });
+    for (r, act, glyph, ok) in [
+        (prev, Act::Prev, '\u{E892}', m.can_prev),
+        (next, Act::Next, '\u{E893}', m.can_next),
+    ] {
+        if hot(a, act) {
+            g.fill_rrect(r, 18.0, Color::white(0.10 * ca));
+        }
         g.icon(glyph, r, &f.icon18, (if ok { T1 } else { T3 }).fade(ca));
     }
-    g.fill_circle(play.cx(), play.cy(), 22.0, Color::white(0.91 * ca));
-    g.stroke_rrect(Rect::new(play.cx() - 22.0, play.cy() - 22.0, 44.0, 44.0), 22.0, accent.fade(0.34 * ca), 1.0);
-    g.icon(if m.playing { '\u{E769}' } else { '\u{E768}' }, play, &f.icon18, Color(0.04, 0.04, 0.06, ca));
+    g.fill_circle(play.cx(), play.cy(), 21.0, accent.fade(0.96 * ca));
+    g.stroke_rrect(
+        Rect::new(play.cx() - 22.0, play.cy() - 22.0, 44.0, 44.0),
+        22.0,
+        Color::white(0.40 * ca),
+        1.0,
+    );
+    g.icon(
+        if m.playing { '\u{E769}' } else { '\u{E768}' },
+        play,
+        &f.icon18,
+        Color(0.04, 0.04, 0.06, ca),
+    );
 
-    // Lyrics are part of the player surface, in the position shown in the
-    // user's reference. The full lyric page remains one tap away.
-    let lyric_pane = Rect::new(330.0, 24.0, 237.0, 139.0);
-    g.fill_rrect(lyric_pane, 16.0, Color(0.0, 0.0, 0.0, 0.16 * ca));
-    g.fill_rrect(lyric_pane, 16.0, accent.fade(0.045 * ca));
-    g.stroke_rrect(lyric_pane, 16.0, Color::white(0.12 * ca), 0.8);
-    g.fill_rrect(Rect::new(341.0, 35.0, 2.0, 20.0), 1.0, accent.fade(0.78 * ca));
-    g.text("LYRICS", Rect::new(350.0, 30.0, 100.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
-    let lyrics_button = Rect::new(496.0, 27.0, 59.0, 23.0);
-    hits.push(Hit { r: lyrics_button, act: Act::LyricsToggle });
-    g.fill_rrect(lyrics_button, 10.0, (if hot(a, Act::LyricsToggle) { accent.fade(0.22) } else { Color::white(0.07) }).fade(ca));
-    g.text("Full lyrics", lyrics_button, &f.tiny, accent.fade(ca), Align::Center);
+    // A full-width lyric stage gives long lines room to wrap below the player.
+    let mic_button = Rect::new(526.0, 122.0, 30.0, 25.0);
+    hits.push(Hit {
+        r: mic_button,
+        act: Act::LyricsPaneToggle,
+    });
+    g.fill_rrect(
+        Rect::new(38.0, 123.0, 2.0, 19.0),
+        1.0,
+        accent.fade(0.88 * ca),
+    );
+    g.text(
+        "LYRICS",
+        Rect::new(50.0, 121.0, 105.0, 22.0),
+        &f.small,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.fill_rrect(
+        mic_button,
+        12.0,
+        accent.fade(if hot(a, Act::LyricsPaneToggle) {
+            0.36 * ca
+        } else {
+            0.23 * ca
+        }),
+    );
+    g.stroke_rrect(mic_button, 12.0, Color::white(0.24 * ca), 0.8);
+    g.icon(
+        '\u{E720}',
+        Rect::new(mic_button.x + 5.0, mic_button.y + 4.0, 20.0, 17.0),
+        &f.icon14,
+        T1.fade(ca),
+    );
 
-    let lyric_data = crate::lyrics::snapshot()
-        .filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist));
+    let queue_button = Rect::new(423.0, 121.0, 92.0, 26.0);
+    hits.push(Hit {
+        r: queue_button,
+        act: Act::AssistantOpen,
+    });
+    glass_card_k(
+        a,
+        queue_button,
+        13.0,
+        ca,
+        hot_k(a, Act::AssistantOpen),
+        accent,
+    );
+    g.text(
+        "+ Queue",
+        queue_button,
+        &f.small,
+        accent.fade(ca),
+        Align::Center,
+    );
+
+    let lyric_data =
+        crate::lyrics::snapshot().filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist));
     if let Some(data) = lyric_data {
         if data.loading || data.lines.is_empty() {
-            g.text(&data.message, Rect::new(346.0, 62.0, 208.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+            g.text(
+                &data.message,
+                Rect::new(42.0, 153.0, EXP_W - 84.0, 42.0),
+                &f.body,
+                T2.fade(ca),
+                Align::Center,
+            );
         } else {
             let (pos, _) = m.progress(sys::filetime_now());
             let current = if data.synced {
-                data.lines.iter().rposition(|line| line.at.is_some_and(|at| at <= pos)).unwrap_or(0)
-            } else { 0 };
-            if current > 0 {
-                g.text(&data.lines[current - 1].text, Rect::new(347.0, 58.0, 203.0, 20.0), &f.tiny, T3.fade(0.68 * ca), Align::Center);
-            }
-            g.text(&data.lines[current].text, Rect::new(345.0, 77.0, 207.0, 48.0), &f.title, T1.fade(ca), Align::Center);
-            if let Some(next_line) = data.lines.get(current + 1) {
-                g.text(&next_line.text, Rect::new(347.0, 128.0, 203.0, 20.0), &f.tiny, T3.fade(0.75 * ca), Align::Center);
+                data.lines
+                    .iter()
+                    .rposition(|line| line.at.is_some_and(|at| at <= pos))
+                    .unwrap_or(0)
+            } else {
+                0
+            };
+            let text_left = 43.0;
+            let text_width = EXP_W - 86.0;
+            let active = &data.lines[current].text;
+            let wrapped = wrap_lyric_text(g, active, &f.title, text_width, 3);
+            let active_lines = wrapped.lines().count().max(1);
+            if active_lines >= 3 {
+                let line_height = (48.0 / active_lines as f32).clamp(8.0, 16.0);
+                let lyric_font = if active_lines <= 3 { &f.small } else { &f.tiny };
+                let total_height = line_height * active_lines as f32;
+                let start_y = 171.0 - total_height * 0.5;
+                for (i, line) in wrapped.lines().enumerate() {
+                    g.text(
+                        line,
+                        Rect::new(
+                            text_left,
+                            start_y + i as f32 * line_height,
+                            text_width,
+                            line_height.max(11.0),
+                        ),
+                        lyric_font,
+                        mix(T1, accent, 0.14).fade(ca),
+                        Align::Center,
+                    );
+                }
+            } else {
+                if active_lines == 1 && current > 0 {
+                    g.text(
+                        &data.lines[current - 1].text,
+                        Rect::new(text_left, 145.0, text_width, 17.0),
+                        &f.tiny,
+                        T3.fade(0.76 * ca),
+                        Align::Center,
+                    );
+                }
+                let y = if active_lines == 2 { 148.0 } else { 160.0 };
+                for (i, line) in wrapped.lines().enumerate() {
+                    g.text(
+                        line,
+                        Rect::new(text_left, y + i as f32 * 22.0, text_width, 22.0),
+                        &f.title,
+                        mix(T1, accent, 0.14).fade(ca),
+                        Align::Center,
+                    );
+                }
+                if active_lines == 1 {
+                    if let Some(next_line) = data.lines.get(current + 1) {
+                        g.text(
+                            &next_line.text,
+                            Rect::new(text_left, 185.0, text_width, 16.0),
+                            &f.tiny,
+                            T3.fade(0.78 * ca),
+                            Align::Center,
+                        );
+                    }
+                }
             }
         }
     } else {
-        g.text("Lyrics appear here when available", Rect::new(346.0, 62.0, 208.0, 57.0), &f.small, T2.fade(ca), Align::Center);
+        g.text(
+            "Lyrics appear here when available",
+            Rect::new(42.0, 154.0, EXP_W - 84.0, 32.0),
+            &f.body,
+            T2.fade(ca),
+            Align::Center,
+        );
     }
 
-    // A single fine waveform line spans both halves of the player.
-    let (pos, dur) = if loading.is_some() { (0.0, 0.0) } else { m.progress(sys::filetime_now()) };
+    // Shared timeline spans beneath both the track controls and lyrics.
+    let (pos, dur) = if loading.is_some() {
+        (0.0, 0.0)
+    } else {
+        m.progress(sys::filetime_now())
+    };
     let frac = match a.seek_frac {
         Some(fr) => fr,
         None if dur > 0.0 => (pos / dur) as f32,
@@ -1534,11 +3128,11 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     } else {
         pos
     };
-    let bar = Rect::new(29.0, 176.0, EXP_W - 58.0, 14.0);
+    let bar = Rect::new(38.0, 202.0, EXP_W - 76.0, 10.0);
     wave_seek(a, bar, frac, ca, hits, dur > 0.0 && m.can_seek);
     g.text(
         &fmt_time(shown),
-        Rect::new(29.0, 192.0, 70.0, 15.0),
+        Rect::new(38.0, 214.0, 70.0, 14.0),
         &f.tiny,
         T3.fade(ca),
         Align::Left,
@@ -1546,87 +3140,266 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     if dur > 0.0 {
         g.text(
             &fmt_time(dur),
-            Rect::new(bar.x + bar.w - 70.0, 192.0, 70.0, 15.0),
+            Rect::new(bar.x + bar.w - 48.0, 214.0, 48.0, 14.0),
             &f.tiny,
             T3.fade(ca),
             Align::Right,
         );
     }
-
-    if let Some(v) = a.spotify_vol {
-        let mute = Rect::new(29.0, 210.0, 20.0, 20.0);
-        hits.push(Hit { r: mute, act: Act::SpotifyMute });
-        g.icon(if v < 0.001 { '\u{E74F}' } else { '\u{E767}' }, mute, &f.icon14, T2.fade(ca));
-        slider(a, Rect::new(56.0, 213.0, 86.0, 14.0), v, Act::SpotifyVolume, accent, ca, hits, true);
-        g.text("SPOTIFY", Rect::new(147.0, 210.0, 70.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
-    }
-    let queue_button = Rect::new(EXP_W - 119.0, 207.0, 88.0, 25.0);
-    hits.push(Hit { r: queue_button, act: Act::AssistantOpen });
-    glass_card_k(a, queue_button, 12.0, ca, hot_k(a, Act::AssistantOpen), accent);
-    g.text("+ Queue", queue_button, &f.small, accent.fade(ca), Align::Center);
 }
 
-/// Readable lyric lines with a permanently visible seek bar and transport.
-/// No replacement of Prev, Play/Pause, Next, or mixer volume controls.
-fn page_media_lyrics(a: &App, m: &crate::media::MediaState, ca: f32, hits: &mut Vec<Hit>) {
-    let g = &a.gfx;
-    let f = &g.fonts;
-    let lyrics_card = Rect::new(16.0, 5.0, EXP_W - 32.0, 199.0);
-    g.fill_rrect(lyrics_card, 20.0, SURF.fade(ca));
-    g.stroke_rrect(lyrics_card, 20.0, Color::white(0.085 * ca), 0.8);
-    g.text(&m.title, Rect::new(28.0, 0.0, 390.0, 22.0), &f.small, T1.fade(ca), Align::Left);
-    g.text(&m.artist, Rect::new(28.0, 20.0, 380.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
-    let back = Rect::new(484.0, 3.0, 88.0, 27.0);
-    hits.push(Hit { r: back, act: Act::LyricsToggle });
-    g.fill_rrect(back, 12.0, (if hot(a, Act::LyricsToggle) { HOVER } else { SURF }).fade(ca));
-    g.text("‹ Player", back, &f.small, a.accent.fade(ca), Align::Center);
-
-    let display = Rect::new(25.0, 40.0, EXP_W - 50.0, 91.0);
-    g.fill_rrect(display, 15.0, Color(0.0, 0.0, 0.0, 0.19 * ca));
-    let data = crate::lyrics::snapshot().filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist));
-    if let Some(data) = data {
-        if data.loading || data.lines.is_empty() {
-            g.text(&data.message, display, &f.body, T2.fade(ca), Align::Center);
-        } else {
-            let (pos, _) = m.progress(sys::filetime_now());
-            let active = if data.synced {
-                data.lines.iter().rposition(|line| line.at.is_some_and(|at| at <= pos)).unwrap_or(0)
-            } else { 0 };
-            let start = if data.synced { active.saturating_sub(1).saturating_add(a.lyrics_scroll).min(data.lines.len().saturating_sub(1)) }
-                        else { a.lyrics_scroll.min(data.lines.len().saturating_sub(1)) };
-            for (i, line) in data.lines.iter().skip(start).take(3).enumerate() {
-                let r = Rect::new(38.0, 46.0 + i as f32 * 27.0, EXP_W - 76.0, 25.0);
-                let current = data.synced && start + i == active;
-                if current { g.fill_rrect(r, 9.0, a.accent.fade(0.15 * ca)); }
-                g.text(&line.text, r, &f.small, (if current { T1 } else { T2 }).fade(ca), Align::Center);
+/// Wrap one lyric using DirectWrite's own measurement so mixed scripts and
+/// punctuation fit accurately. Three lines is the available lyric-stage limit.
+fn wrap_lyric_text(
+    g: &Gfx,
+    text: &str,
+    font: &crate::gfx::Font,
+    max_width: f32,
+    _max_lines: usize,
+) -> String {
+    let mut output = Vec::new();
+    for paragraph in text.lines() {
+        let mut line = String::new();
+        for word in paragraph.split_whitespace() {
+            let candidate = if line.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{line} {word}")
+            };
+            if !line.is_empty() && g.text_width(&candidate, font) > max_width {
+                output.push(std::mem::take(&mut line));
+                line.push_str(word);
+            } else {
+                line = candidate;
+            }
+            while g.text_width(&line, font) > max_width {
+                let mut split = String::new();
+                let mut rest = String::new();
+                for ch in line.chars() {
+                    let test = format!("{split}{ch}");
+                    if !split.is_empty() && g.text_width(&test, font) > max_width {
+                        rest.extend(line.chars().skip(split.chars().count()));
+                        break;
+                    }
+                    split = test;
+                }
+                if split.is_empty() {
+                    break;
+                }
+                output.push(split);
+                line = rest;
             }
         }
-    } else {
-        g.text("Finding lyrics...", display, &f.body, T2.fade(ca), Align::Center);
+        if !line.is_empty() {
+            output.push(line);
+        }
     }
+    output.join("\n")
+}
 
-    let (pos, dur) = m.progress(sys::filetime_now());
-    let frac = a.seek_frac.unwrap_or_else(|| if dur > 0.0 { (pos / dur) as f32 } else { 0.0 });
-    slider(a, Rect::new(28.0, 139.0, EXP_W - 56.0, 12.0), frac, Act::Seek, a.accent, ca, hits, dur > 0.0 && m.can_seek);
-    g.text(&fmt_time(pos), Rect::new(28.0, 151.0, 70.0, 15.0), &f.tiny, T3.fade(ca), Align::Left);
-    g.text(&fmt_time(dur), Rect::new(EXP_W - 98.0, 151.0, 70.0, 15.0), &f.tiny, T3.fade(ca), Align::Right);
+/// Full-width player mode when the user turns off the lyrics pane.
+fn page_media_single(
+    a: &App,
+    m: &crate::media::MediaState,
+    art: Option<&windows::Win32::Graphics::Direct2D::ID2D1Bitmap>,
+    loading: bool,
+    ca: f32,
+    hits: &mut Vec<Hit>,
+) {
+    let g = &a.gfx;
+    let f = &g.fonts;
+    let accent = glass_accent(a);
+    let panel = Rect::new(16.0, 8.0, EXP_W - 32.0, 232.0);
+    glass_card(a, panel, 24.0, ca, false);
+    g.fill_rrect(
+        Rect::new(24.0, 16.0, EXP_W - 48.0, 216.0),
+        19.0,
+        Color::white(0.028 * ca),
+    );
+
+    let cover = Rect::new(39.0, 29.0, 142.0, 142.0);
+    if let Some(bitmap) = art {
+        g.draw_bitmap(bitmap, cover, 17.0, ca);
+    } else {
+        g.fill_rrect(cover, 17.0, Color::white(0.09 * ca));
+        g.icon('\u{E8D6}', cover, &f.icon22, accent.fade(ca));
+    }
+    if loading {
+        g.fill_rrect(cover, 17.0, Color(0.0, 0.0, 0.0, 0.42 * ca));
+        spinner(g, cover.cx(), cover.cy(), 19.0, a.spin_t, accent, ca);
+    }
+    g.stroke_rrect(cover, 17.0, Color::white(0.34 * ca), 0.9);
+
+    g.text(
+        "NOW PLAYING",
+        Rect::new(205.0, 38.0, 250.0, 18.0),
+        &f.tiny,
+        accent.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        if m.title.is_empty() {
+            "Unknown title"
+        } else {
+            &m.title
+        },
+        Rect::new(205.0, 61.0, 320.0, 38.0),
+        &f.title,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        if loading {
+            "Loading track…"
+        } else if m.artist.is_empty() {
+            &m.album
+        } else {
+            &m.artist
+        },
+        Rect::new(205.0, 101.0, 320.0, 24.0),
+        &f.body,
+        T2.fade(ca),
+        Align::Left,
+    );
+    let app_label = if !m.app.is_empty()
+        && !(m.app.len() >= 12 && m.app.chars().all(|c| c.is_ascii_hexdigit()))
+    {
+        &m.app
+    } else {
+        "MEDIA SESSION"
+    };
+    g.text(
+        app_label,
+        Rect::new(205.0, 126.0, 245.0, 18.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
+
+    let prev = Rect::new(248.0, 148.0, 36.0, 36.0);
+    let play = Rect::new(300.0, 143.0, 46.0, 46.0);
+    let next = Rect::new(362.0, 148.0, 36.0, 36.0);
+    hits.push(Hit {
+        r: prev,
+        act: Act::Prev,
+    });
+    hits.push(Hit {
+        r: play,
+        act: Act::PlayPause,
+    });
+    hits.push(Hit {
+        r: next,
+        act: Act::Next,
+    });
+    for (r, act, icon, available) in [
+        (prev, Act::Prev, '\u{E892}', m.can_prev),
+        (next, Act::Next, '\u{E893}', m.can_next),
+    ] {
+        if hot(a, act) {
+            g.fill_circle(r.cx(), r.cy(), 17.0, Color::white(0.12 * ca));
+        }
+        g.icon(
+            icon,
+            r,
+            &f.icon18,
+            (if available { T1 } else { T3 }).fade(ca),
+        );
+    }
+    g.fill_circle(play.cx(), play.cy(), 22.0, accent.fade(0.96 * ca));
+    g.stroke_rrect(
+        Rect::new(play.x, play.y, play.w, play.h),
+        23.0,
+        Color::white(0.42 * ca),
+        1.0,
+    );
+    g.icon(
+        if m.playing { '\u{E769}' } else { '\u{E768}' },
+        play,
+        &f.icon18,
+        Color(0.035, 0.035, 0.05, ca),
+    );
 
     if let Some(v) = a.spotify_vol {
-        let mute = Rect::new(27.0, 178.0, 22.0, 22.0);
-        hits.push(Hit { r: mute, act: Act::SpotifyMute });
-        g.icon(if v < 0.001 { '\u{E74F}' } else { '\u{E767}' }, mute, &f.icon14, T2.fade(ca));
-        slider(a, Rect::new(55.0, 182.0, 96.0, 12.0), v, Act::SpotifyVolume, a.accent, ca, hits, true);
+        let mute = Rect::new(39.0, 178.0, 20.0, 20.0);
+        hits.push(Hit {
+            r: mute,
+            act: Act::SpotifyMute,
+        });
+        g.icon(
+            if v < 0.001 { '\u{E74F}' } else { '\u{E767}' },
+            mute,
+            &f.icon14,
+            T2.fade(ca),
+        );
+        slider(
+            a,
+            Rect::new(66.0, 181.0, 124.0, 14.0),
+            v,
+            Act::SpotifyVolume,
+            accent,
+            ca,
+            hits,
+            true,
+        );
     }
-    let cy = 185.0;
-    for (r, act, glyph, allowed) in [
-        (Rect::new(328.0, cy - 20.0, 40.0, 40.0), Act::Prev, '\u{E892}', m.can_prev),
-        (Rect::new(391.0, cy - 24.0, 48.0, 48.0), Act::PlayPause, if m.playing { '\u{E769}' } else { '\u{E768}' }, true),
-        (Rect::new(462.0, cy - 20.0, 40.0, 40.0), Act::Next, '\u{E893}', m.can_next),
-    ] {
-        hits.push(Hit { r, act });
-        if hot(a, act) { g.fill_rrect(r, 20.0, HOVER.fade(ca)); }
-        if act == Act::PlayPause { g.fill_circle(r.cx(), r.cy(), 22.0, Color::white(ca)); }
-        g.icon(glyph, r, &f.icon18, (if act == Act::PlayPause { BLACK } else if allowed { T1 } else { T3 }).fade(ca));
+    let queue = Rect::new(447.0, 150.0, 111.0, 30.0);
+    hits.push(Hit {
+        r: queue,
+        act: Act::AssistantOpen,
+    });
+    glass_card_k(a, queue, 15.0, ca, hot_k(a, Act::AssistantOpen), accent);
+    g.text("+ Queue", queue, &f.small, accent.fade(ca), Align::Center);
+
+    let mic = Rect::new(482.0, 27.0, 30.0, 27.0);
+    hits.push(Hit {
+        r: mic,
+        act: Act::LyricsPaneToggle,
+    });
+    g.fill_rrect(
+        mic,
+        14.0,
+        accent.fade(if hot(a, Act::LyricsPaneToggle) {
+            0.38 * ca
+        } else {
+            0.24 * ca
+        }),
+    );
+    g.stroke_rrect(mic, 14.0, Color::white(0.24 * ca), 0.8);
+    g.icon(
+        '\u{E720}',
+        Rect::new(mic.x + 6.0, mic.y + 5.0, 18.0, 17.0),
+        &f.icon14,
+        T1.fade(ca),
+    );
+    let (position, duration) = if loading {
+        (0.0, 0.0)
+    } else {
+        m.progress(sys::filetime_now())
+    };
+    let fraction = a.seek_frac.unwrap_or_else(|| {
+        if duration > 0.0 {
+            (position / duration) as f32
+        } else {
+            0.0
+        }
+    });
+    let bar = Rect::new(39.0, 200.0, EXP_W - 78.0, 10.0);
+    wave_seek(a, bar, fraction, ca, hits, duration > 0.0 && m.can_seek);
+    g.text(
+        &fmt_time(position),
+        Rect::new(39.0, 212.0, 70.0, 15.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
+    if duration > 0.0 {
+        g.text(
+            &fmt_time(duration),
+            Rect::new(bar.x + bar.w - 70.0, 212.0, 70.0, 15.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Right,
+        );
     }
 }
 
@@ -1634,25 +3407,76 @@ fn page_media_lyrics(a: &App, m: &crate::media::MediaState, ca: f32, hits: &mut 
 
 /// One rounded tile: round icon, title, small state line. `on` fills it with the accent.
 #[allow(clippy::too_many_arguments)]
-fn tile(a: &App, ca: f32, hits: &mut Vec<Hit>, r: Rect, act: Act, glyph: char, title: &str, sub: &str, on: bool) {
+fn tile(
+    a: &App,
+    ca: f32,
+    hits: &mut Vec<Hit>,
+    r: Rect,
+    act: Act,
+    glyph: char,
+    title: &str,
+    sub: &str,
+    on: bool,
+) {
     let g = &a.gfx;
     let f = &g.fonts;
     hits.push(Hit { r, act });
     let hovered = hot(a, act);
-    if on { g.fill_rrect(r, 18.0, a.accent.fade(ca)); }
-    else { glass_card(a, r, 18.0, ca, hovered); }
+    if on {
+        g.fill_rrect(r, 18.0, a.accent.fade(ca));
+    } else {
+        glass_card(a, r, 18.0, ca, hovered);
+    }
     if on && hovered {
         g.fill_rrect(r, 18.0, Color::white(0.10 * ca));
     }
     let ic = Rect::new(r.x + 12.0, r.y + (r.h - 34.0) / 2.0, 34.0, 34.0);
-    let tint = match glyph { '\u{E722}' => Color(0.98, 0.45, 0.55, 1.0), '\u{E7F4}' => C_MEM, '\u{E767}' => C_UP, '\u{E774}' => C_CPU, '\u{E83F}' => C_BAT, _ => T1 };
-    g.fill_circle(ic.cx(), ic.cy(), 17.0, (if on { Color(0.0, 0.0, 0.0, 0.14) } else { tint.fade(0.16) }).fade(ca));
-    g.icon(glyph, ic, &f.icon14, (if on { BLACK } else { tint }).fade(ca));
-    let (tc, sc) = if on { (BLACK, Color(0.0, 0.0, 0.0, 0.65)) } else { (T1, T3) };
+    let tint = match glyph {
+        '\u{E722}' => Color(0.98, 0.45, 0.55, 1.0),
+        '\u{E7F4}' => C_MEM,
+        '\u{E767}' => C_UP,
+        '\u{E774}' => C_CPU,
+        '\u{E83F}' => C_BAT,
+        _ => T1,
+    };
+    g.fill_circle(
+        ic.cx(),
+        ic.cy(),
+        17.0,
+        (if on {
+            Color(0.0, 0.0, 0.0, 0.14)
+        } else {
+            tint.fade(0.16)
+        })
+        .fade(ca),
+    );
+    g.icon(
+        glyph,
+        ic,
+        &f.icon14,
+        (if on { BLACK } else { tint }).fade(ca),
+    );
+    let (tc, sc) = if on {
+        (BLACK, Color(0.0, 0.0, 0.0, 0.65))
+    } else {
+        (T1, T3)
+    };
     // title and state line stacked, centred beside the icon
     let ty = r.y + (r.h - 44.0) / 2.0;
-    g.text(title, Rect::new(r.x + 56.0, ty, r.w - 64.0, 22.0), &f.body, tc.fade(ca), Align::Left);
-    g.text(sub, Rect::new(r.x + 56.0, ty + 24.0, r.w - 64.0, 18.0), &f.tiny, sc.fade(ca), Align::Left);
+    g.text(
+        title,
+        Rect::new(r.x + 56.0, ty, r.w - 64.0, 22.0),
+        &f.body,
+        tc.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        sub,
+        Rect::new(r.x + 56.0, ty + 24.0, r.w - 64.0, 18.0),
+        &f.tiny,
+        sc.fade(ca),
+        Align::Left,
+    );
 }
 
 fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
@@ -1660,23 +3484,85 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     // quick settings, so this page is shortcuts to the screenshot tool and the
     // Settings pages people actually go looking for.
     let g = &a.gfx;
-    g.text("COMMAND CENTER", Rect::new(22.0, 3.0, 235.0, 18.0), &g.fonts.tiny, glass_accent(a).fade(ca), Align::Left);
-    g.text("Tools", Rect::new(22.0, 21.0, 205.0, 25.0), &g.fonts.title, T1.fade(ca), Align::Left);
-    g.text("CAPTURE & AUDIO", Rect::new(22.0, 48.0, 205.0, 17.0), &g.fonts.tiny, T3.fade(ca), Align::Left);
-    g.text("QUICK LAUNCH", Rect::new(222.0, 48.0, 205.0, 17.0), &g.fonts.tiny, T3.fade(ca), Align::Left);
+    g.text(
+        "COMMAND CENTER",
+        Rect::new(22.0, 3.0, 235.0, 18.0),
+        &g.fonts.tiny,
+        glass_accent(a).fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "Tools",
+        Rect::new(22.0, 21.0, 205.0, 25.0),
+        &g.fonts.title,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "CAPTURE & AUDIO",
+        Rect::new(22.0, 48.0, 205.0, 17.0),
+        &g.fonts.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        "QUICK LAUNCH",
+        Rect::new(222.0, 48.0, 205.0, 17.0),
+        &g.fonts.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
     // The left column keeps the two most frequent actions large. The right
     // side is a compact command grid; all nine existing actions remain.
-    tile(a, ca, hits, Rect::new(20.0, 68.0, 190.0, 73.0), Act::Quick(2), '\u{E722}', "Screenshot", "Capture region", false);
-    tile(a, ca, hits, Rect::new(20.0, 149.0, 190.0, 73.0), Act::Quick(6), '\u{E767}', "Audio Switch", "Change output", false);
+    tile(
+        a,
+        ca,
+        hits,
+        Rect::new(20.0, 68.0, 190.0, 73.0),
+        Act::Quick(2),
+        '\u{E722}',
+        "Screenshot",
+        "Capture region",
+        false,
+    );
+    tile(
+        a,
+        ca,
+        hits,
+        Rect::new(20.0, 149.0, 190.0, 73.0),
+        Act::Quick(6),
+        '\u{E767}',
+        "Audio Switch",
+        "Change output",
+        false,
+    );
     let commands = [
         (Act::ProcessOpen, '\u{E9D9}', "Processes"),
         (Act::TypingOpen, '\u{E8D4}', "Typing Sprint"),
         (Act::OpenSettings(1), '\u{E767}', "Sound"),
-        (Act::Quick(5), '\u{E720}', if a.mic_muted { "Mic: Muted" } else { "Microphone" }),
+        (
+            Act::Quick(5),
+            '\u{E720}',
+            if a.mic_muted {
+                "Mic: Muted"
+            } else {
+                "Microphone"
+            },
+        ),
         (Act::CalculatorOpen, '\u{E8EF}', "Calculator"),
         (Act::WindowManagerOpen, '\u{E80F}', "Layouts"),
         (Act::MirrorOpen, '\u{E714}', "Mirror"),
-        (Act::GlassToggle, '\u{E706}', if a.glass && a.live_glass.is_some() { "Live glass: On" } else if a.glass { "Glass: On" } else { "Glass: Off" }),
+        (
+            Act::GlassToggle,
+            '\u{E706}',
+            if a.glass && a.live_glass.is_some() {
+                "Live glass: On"
+            } else if a.glass {
+                "Glass: On"
+            } else {
+                "Glass: Off"
+            },
+        ),
     ];
     for (i, (act, glyph, label)) in commands.iter().enumerate() {
         let col = (i % 2) as f32;
@@ -1684,21 +3570,72 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let r = Rect::new(222.0 + col * 181.0, 68.0 + row * 39.0, 173.0, 35.0);
         hits.push(Hit { r, act: *act });
         glass_card(a, r, 10.0, ca, hot(a, *act));
-        g.fill_rrect(Rect::new(r.x, r.y + 6.0, 2.0, r.h - 12.0), 1.0, glass_accent(a).fade(0.55 * ca));
-        g.icon(*glyph, Rect::new(r.x + 9.0, r.y + 7.0, 25.0, 25.0), &g.fonts.icon14, glass_accent(a).fade(ca));
-        g.text(label, Rect::new(r.x + 38.0, r.y + 3.0, r.w - 43.0, 33.0), &g.fonts.small, T1.fade(ca), Align::Left);
+        g.fill_rrect(
+            Rect::new(r.x, r.y + 6.0, 2.0, r.h - 12.0),
+            1.0,
+            glass_accent(a).fade(0.55 * ca),
+        );
+        g.icon(
+            *glyph,
+            Rect::new(r.x + 9.0, r.y + 7.0, 25.0, 25.0),
+            &g.fonts.icon14,
+            glass_accent(a).fade(ca),
+        );
+        g.text(
+            label,
+            Rect::new(r.x + 38.0, r.y + 3.0, r.w - 43.0, 33.0),
+            &g.fonts.small,
+            T1.fade(ca),
+            Align::Left,
+        );
     }
     let taskbar = Rect::new(20.0, 228.0, 560.0, 30.0);
     let enabled = a.dock.as_ref().is_some_and(|dock| dock.enabled);
-    hits.push(Hit { r: taskbar, act: Act::DockToggle });
+    hits.push(Hit {
+        r: taskbar,
+        act: Act::DockToggle,
+    });
     glass_card(a, taskbar, 12.0, ca, hot(a, Act::DockToggle));
-    g.icon('\u{E8F2}', Rect::new(32.0, 232.0, 22.0, 22.0), &g.fonts.icon14, glass_accent(a).fade(ca));
-    g.text("Glass taskbar", Rect::new(62.0, 230.0, 180.0, 26.0), &g.fonts.small, T1.fade(ca), Align::Left);
-    g.text(if enabled { "On · Windows taskbar auto-hides" } else { "Off · Windows taskbar stays visible" },
-        Rect::new(246.0, 230.0, 278.0, 26.0), &g.fonts.tiny, T2.fade(ca), Align::Right);
+    g.icon(
+        '\u{E8F2}',
+        Rect::new(32.0, 232.0, 22.0, 22.0),
+        &g.fonts.icon14,
+        glass_accent(a).fade(ca),
+    );
+    g.text(
+        "Glass taskbar",
+        Rect::new(62.0, 230.0, 180.0, 26.0),
+        &g.fonts.small,
+        T1.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        if enabled {
+            "On · Windows taskbar auto-hides"
+        } else {
+            "Off · Windows taskbar stays visible"
+        },
+        Rect::new(246.0, 230.0, 278.0, 26.0),
+        &g.fonts.tiny,
+        T2.fade(ca),
+        Align::Right,
+    );
     let track = Rect::new(535.0, 235.0, 31.0, 16.0);
-    g.fill_rrect(track, 8.0, if enabled { glass_accent(a).fade(0.78 * ca) } else { Color::white(0.15 * ca) });
-    g.fill_circle(if enabled { 557.0 } else { 543.0 }, 243.0, 5.5, Color::white(ca));
+    g.fill_rrect(
+        track,
+        8.0,
+        if enabled {
+            glass_accent(a).fade(0.78 * ca)
+        } else {
+            Color::white(0.15 * ca)
+        },
+    );
+    g.fill_circle(
+        if enabled { 557.0 } else { 543.0 },
+        243.0,
+        5.5,
+        Color::white(ca),
+    );
 }
 
 /// Nock-local notification history plus real live work already tracked by Nock.
@@ -1715,33 +3652,91 @@ fn page_activity(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         crate::win_notifications::Permission::Pending => "Waiting for your permission...",
         crate::win_notifications::Permission::Denied => "Windows access denied",
         crate::win_notifications::Permission::Unspecified => "Permission required",
-        crate::win_notifications::Permission::Unavailable => "Install Notchix to connect Windows alerts",
+        crate::win_notifications::Permission::Unavailable => {
+            "Install Notchix to connect Windows alerts"
+        }
     };
-    g.text("NOTIFICATIONS", Rect::new(24.0, 2.0, 230.0, 18.0), &f.tiny, glass_accent(a).fade(ca), Align::Left);
-    g.fill_circle(29.0, 29.0, 3.0, (if permission == crate::win_notifications::Permission::Allowed { Color(0.30, 0.83, 0.60, 1.0) } else { T3 }).fade(ca));
-    g.text(state, Rect::new(40.0, 20.0, 394.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
+    g.text(
+        "NOTIFICATIONS",
+        Rect::new(24.0, 2.0, 230.0, 18.0),
+        &f.tiny,
+        glass_accent(a).fade(ca),
+        Align::Left,
+    );
+    g.fill_circle(
+        29.0,
+        29.0,
+        3.0,
+        (if permission == crate::win_notifications::Permission::Allowed {
+            Color(0.30, 0.83, 0.60, 1.0)
+        } else {
+            T3
+        })
+        .fade(ca),
+    );
+    g.text(
+        state,
+        Rect::new(40.0, 20.0, 394.0, 18.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
     let permission_button = Rect::new(447.0, 12.0, 122.0, 26.0);
-    if permission != crate::win_notifications::Permission::Allowed && permission != crate::win_notifications::Permission::Pending {
+    if permission != crate::win_notifications::Permission::Allowed
+        && permission != crate::win_notifications::Permission::Pending
+    {
         g.fill_rrect(permission_button, 13.5, a.accent.fade(0.42 * ca));
-        g.text("Allow access", permission_button, &f.small, T1.fade(ca), Align::Center);
-        hits.push(Hit { r: permission_button, act: Act::ActivityRequestAccess });
+        g.text(
+            "Allow access",
+            permission_button,
+            &f.small,
+            T1.fade(ca),
+            Align::Center,
+        );
+        hits.push(Hit {
+            r: permission_button,
+            act: Act::ActivityRequestAccess,
+        });
     }
-    g.text("RECENT", Rect::new(25.0, 44.0, 140.0, 16.0), &f.tiny, glass_accent(a).fade(ca), Align::Left);
+    g.text(
+        "RECENT",
+        Rect::new(25.0, 44.0, 140.0, 16.0),
+        &f.tiny,
+        glass_accent(a).fade(ca),
+        Align::Left,
+    );
     let total = a.system_notices.len();
     let visible_from = if total == 0 { 0 } else { a.activity_scroll + 1 };
     let visible_to = (a.activity_scroll + 3).min(total);
-    g.text(&format!("{visible_from}-{visible_to} of {total} · scroll"), Rect::new(400.0, 44.0, 173.0, 17.0), &f.tiny, T3.fade(ca), Align::Right);
-    for (i, notice) in a.system_notices.iter().skip(a.activity_scroll).take(3).enumerate() {
+    g.text(
+        &format!("{visible_from}-{visible_to} of {total} · scroll"),
+        Rect::new(400.0, 44.0, 173.0, 17.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Right,
+    );
+    for (i, notice) in a
+        .system_notices
+        .iter()
+        .skip(a.activity_scroll)
+        .take(3)
+        .enumerate()
+    {
         let y = 64.0 + i as f32 * 65.0;
         let r = Rect::new(20.0, y, 560.0, 58.0);
-        let source = crate::win_notifications::display_source(&notice.app, &notice.title, &notice.body);
+        let source =
+            crate::win_notifications::display_source(&notice.app, &notice.title, &notice.body);
         let kind = crate::win_notifications::classify(&notice.app, &notice.title, &notice.body);
         let tint = notification_tint(source);
         // Layered graphite cards retain contrast without a bright, permanent
         // application-colored fill. The accent is limited to the icon.
         glass_card(a, r, 17.0, ca, false);
         if kind != crate::win_notifications::NoticeKind::Regular && !a.private_notifications {
-            g.fill_rrect(Rect::new(23.0, y + 14.0, 2.0, 30.0), 1.0, tint.fade(0.8 * ca));
+            g.fill_rrect(
+                Rect::new(23.0, y + 14.0, 2.0, 30.0),
+                1.0,
+                tint.fade(0.8 * ca),
+            );
             let badge = Rect::new(386.0, y + 6.0, 98.0, 16.0);
             g.fill_rrect(badge, 8.0, tint.fade(0.13 * ca));
             g.text(kind.badge(), badge, &f.tiny, tint.fade(ca), Align::Center);
@@ -1749,45 +3744,138 @@ fn page_activity(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let icon = Rect::new(30.0, y + 13.0, 32.0, 32.0);
         draw_notice_icon(a, source, icon, ca);
         let age = notice.received.elapsed().as_secs();
-        let time = if age < 60 { "now".to_string() } else if age < 3600 { format!("{}m", age / 60) } else { format!("{}h", age / 3600) };
-        g.text(source, Rect::new(75.0, y + 7.0, 210.0, 14.0), &f.tiny, tint.fade(ca), Align::Left);
-        g.text(&time, Rect::new(491.0, y + 8.0, 39.0, 14.0), &f.tiny, T3.fade(ca), Align::Right);
+        let time = if age < 60 {
+            "now".to_string()
+        } else if age < 3600 {
+            format!("{}m", age / 60)
+        } else {
+            format!("{}h", age / 3600)
+        };
+        g.text(
+            source,
+            Rect::new(75.0, y + 7.0, 210.0, 14.0),
+            &f.tiny,
+            tint.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &time,
+            Rect::new(491.0, y + 8.0, 39.0, 14.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Right,
+        );
         // Dismiss only this Nock history row. Native Windows Action Center
         // notifications remain untouched by the local history controls.
         let dismiss = Rect::new(538.0, y + 17.0, 29.0, 24.0);
         let dismiss_act = Act::ActivityDismiss(a.activity_scroll + i);
-        hits.push(Hit { r: dismiss, act: dismiss_act });
-        if hot(a, dismiss_act) { g.fill_rrect(dismiss, 9.0, Color::white(0.14 * ca)); }
+        hits.push(Hit {
+            r: dismiss,
+            act: dismiss_act,
+        });
+        if hot(a, dismiss_act) {
+            g.fill_rrect(dismiss, 9.0, Color::white(0.14 * ca));
+        }
         g.icon('\u{E8BB}', dismiss, &f.icon14, T3.fade(ca));
-        let title = if a.private_notifications { "Notification" } else { &notice.title };
-        g.text(title, Rect::new(75.0, y + 23.0, 450.0, 17.0), &f.small, T1.fade(ca), Align::Left);
+        let title = if a.private_notifications {
+            "Notification"
+        } else {
+            &notice.title
+        };
+        g.text(
+            title,
+            Rect::new(75.0, y + 23.0, 450.0, 17.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         if !notice.body.is_empty() {
-            let body = if a.private_notifications { "Content hidden" } else { &notice.body };
-            g.text(body, Rect::new(75.0, y + 43.0, 450.0, 14.0), &f.tiny, T2.fade(ca), Align::Left);
+            let body = if a.private_notifications {
+                "Content hidden"
+            } else {
+                &notice.body
+            };
+            g.text(
+                body,
+                Rect::new(75.0, y + 43.0, 450.0, 14.0),
+                &f.tiny,
+                T2.fade(ca),
+                Align::Left,
+            );
         }
     }
     if a.system_notices.is_empty() {
-        if a.mascot_visible { draw_miso_at(a, ca, 300.0, 151.0, false); }
-        g.text("Your notifications will appear here", Rect::new(20.0, 181.0, 560.0, 26.0), &f.small, T2.fade(ca), Align::Center);
+        if a.mascot_visible {
+            draw_miso_at(a, ca, 300.0, 151.0, false);
+        }
+        g.text(
+            "Your notifications will appear here",
+            Rect::new(20.0, 181.0, 560.0, 26.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Center,
+        );
     }
 
     let actions = [
         (Act::ActivityTestPreview, '\u{E7F4}', "Preview Island"),
-        (Act::ActivityQuietToggle, '\u{E708}', if a.quiet_alerts { "Quiet alerts: ON" } else { "Quiet alerts: OFF" }),
-        (Act::ActivityPrivacyToggle, '\u{E72E}', if a.private_notifications { "Private previews: ON" } else { "Private previews: OFF" }),
+        (
+            Act::ActivityQuietToggle,
+            '\u{E708}',
+            if a.quiet_alerts {
+                "Quiet alerts: ON"
+            } else {
+                "Quiet alerts: OFF"
+            },
+        ),
+        (
+            Act::ActivityPrivacyToggle,
+            '\u{E72E}',
+            if a.private_notifications {
+                "Private previews: ON"
+            } else {
+                "Private previews: OFF"
+            },
+        ),
         (Act::ActivityClear, '\u{E74D}', "Clear all history"),
     ];
     for (i, (act, glyph, label)) in actions.iter().enumerate() {
-        let r = Rect::new(20.0 + (i % 2) as f32 * 284.0, 256.0 + (i / 2) as f32 * 29.0, 276.0, 26.0);
+        let r = Rect::new(
+            20.0 + (i % 2) as f32 * 284.0,
+            256.0 + (i / 2) as f32 * 29.0,
+            276.0,
+            26.0,
+        );
         hits.push(Hit { r, act: *act });
         glass_card(a, r, 9.0, ca * 0.68, hot(a, *act));
-        g.icon(*glyph, Rect::new(r.x + 9.0, r.y + 2.0, 22.0, 21.0), &f.icon14, glass_accent(a).fade(ca));
-        g.text(label, Rect::new(r.x + 37.0, r.y, r.w - 48.0, r.h), &f.small, T1.fade(ca), Align::Left);
+        g.icon(
+            *glyph,
+            Rect::new(r.x + 9.0, r.y + 2.0, 22.0, 21.0),
+            &f.icon14,
+            glass_accent(a).fade(ca),
+        );
+        g.text(
+            label,
+            Rect::new(r.x + 37.0, r.y, r.w - 48.0, r.h),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
     }
-    let progress = if status.busy && status.total_bytes > 0 { (status.done_bytes as f64 / status.total_bytes as f64).clamp(0.0, 1.0) as f32 } else { 0.0 };
+    let progress = if status.busy && status.total_bytes > 0 {
+        (status.done_bytes as f64 / status.total_bytes as f64).clamp(0.0, 1.0) as f32
+    } else {
+        0.0
+    };
     let bar = Rect::new(20.0, 315.0, 560.0, 2.0);
     g.fill_rrect(bar, 1.5, HOVER.fade(ca));
-    if progress > 0.0 { g.fill_rrect(Rect::new(bar.x, bar.y, bar.w * progress, bar.h), 1.5, a.accent.fade(ca)); }
+    if progress > 0.0 {
+        g.fill_rrect(
+            Rect::new(bar.x, bar.y, bar.w * progress, bar.h),
+            1.5,
+            a.accent.fade(ca),
+        );
+    }
     let _ = status;
 }
 
@@ -1799,27 +3887,101 @@ fn page_weather(a: &App, ca: f32) {
     let w = crate::weather::snapshot();
     let hero = Rect::new(22.0, 6.0, 556.0, 147.0);
     g.fill_rrect(hero, 22.0, SURF.fade(ca));
-    g.fill_rrect(Rect::new(22.0, 6.0, 556.0, 147.0), 22.0, a.accent.fade(0.08 * ca));
+    g.fill_rrect(
+        Rect::new(22.0, 6.0, 556.0, 147.0),
+        22.0,
+        a.accent.fade(0.08 * ca),
+    );
     g.stroke_rrect(hero, 22.0, a.accent.fade(0.21 * ca), 1.0);
     if let Some(temp) = w.temperature {
         let label = crate::weather::description(w.code);
         g.fill_circle(492.0, 62.0, 36.0, Color(1.0, 0.77, 0.37, 0.16 * ca));
-        g.icon(if w.code >= 61 { '\u{E753}' } else if w.code == 0 { '\u{E706}' } else { '\u{E753}' }, Rect::new(453.0, 20.0, 78.0, 80.0), &f.icon22, a.accent.fade(ca));
-        g.text(&w.city, Rect::new(45.0, 18.0, 290.0, 26.0), &f.body, T2.fade(ca), Align::Left);
-        g.text(&format!("{}°", temp.round() as i32), Rect::new(42.0, 45.0, 230.0, 67.0), &f.big, T1.fade(ca), Align::Left);
-        g.text(label, Rect::new(45.0, 111.0, 340.0, 25.0), &f.body, T1.fade(ca), Align::Left);
+        g.icon(
+            if w.code >= 61 {
+                '\u{E753}'
+            } else if w.code == 0 {
+                '\u{E706}'
+            } else {
+                '\u{E753}'
+            },
+            Rect::new(453.0, 20.0, 78.0, 80.0),
+            &f.icon22,
+            a.accent.fade(ca),
+        );
+        g.text(
+            &w.city,
+            Rect::new(45.0, 18.0, 290.0, 26.0),
+            &f.body,
+            T2.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &format!("{}°", temp.round() as i32),
+            Rect::new(42.0, 45.0, 230.0, 67.0),
+            &f.big,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            label,
+            Rect::new(45.0, 111.0, 340.0, 25.0),
+            &f.body,
+            T1.fade(ca),
+            Align::Left,
+        );
         if let Some(feels) = w.feels_like {
-            g.text(&format!("Feels like {}°C", feels.round() as i32), Rect::new(35.0, 164.0, 246.0, 27.0), &f.small, T2.fade(ca), Align::Left);
+            g.text(
+                &format!("Feels like {}°C", feels.round() as i32),
+                Rect::new(35.0, 164.0, 246.0, 27.0),
+                &f.small,
+                T2.fade(ca),
+                Align::Left,
+            );
         }
         if let Some(humidity) = w.humidity {
-            g.text(&format!("Humidity {humidity}%"), Rect::new(315.0, 164.0, 242.0, 27.0), &f.small, T2.fade(ca), Align::Right);
+            g.text(
+                &format!("Humidity {humidity}%"),
+                Rect::new(315.0, 164.0, 242.0, 27.0),
+                &f.small,
+                T2.fade(ca),
+                Align::Right,
+            );
         }
-        g.text("Powered by Open-Meteo · updates about every 30 minutes", Rect::new(25.0, 198.0, 550.0, 17.0), &f.tiny, T3.fade(ca), Align::Center);
+        g.text(
+            "Powered by Open-Meteo · updates about every 30 minutes",
+            Rect::new(25.0, 198.0, 550.0, 17.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Center,
+        );
     } else {
-        g.icon('\u{E753}', Rect::new(265.0, 20.0, 70.0, 65.0), &f.icon22, a.accent.fade(ca));
-        g.text("Choose your weather location", Rect::new(48.0, 86.0, 504.0, 30.0), &f.body, T1.fade(ca), Align::Center);
-        g.text("Edit %APPDATA%\\Nock\\weather.txt", Rect::new(42.0, 119.0, 516.0, 24.0), &f.small, T2.fade(ca), Align::Center);
-        g.text("Add City|Latitude|Longitude, then reopen Weather", Rect::new(30.0, 165.0, 540.0, 28.0), &f.small, T2.fade(ca), Align::Center);
+        g.icon(
+            '\u{E753}',
+            Rect::new(265.0, 20.0, 70.0, 65.0),
+            &f.icon22,
+            a.accent.fade(ca),
+        );
+        g.text(
+            "Choose your weather location",
+            Rect::new(48.0, 86.0, 504.0, 30.0),
+            &f.body,
+            T1.fade(ca),
+            Align::Center,
+        );
+        g.text(
+            "Edit %APPDATA%\\Nock\\weather.txt",
+            Rect::new(42.0, 119.0, 516.0, 24.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Center,
+        );
+        g.text(
+            "Add City|Latitude|Longitude, then reopen Weather",
+            Rect::new(30.0, 165.0, 540.0, 28.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Center,
+        );
     }
 }
 
@@ -1833,20 +3995,47 @@ fn page_mirror(a: &App, ca: f32) {
             g.draw_bitmap(frame, r, 16.0, ca);
         });
     } else {
-        g.icon('\u{E714}', Rect::new(r.cx() - 25.0, r.cy() - 25.0, 50.0, 50.0), &g.fonts.icon22, a.accent.fade(ca));
+        g.icon(
+            '\u{E714}',
+            Rect::new(r.cx() - 25.0, r.cy() - 25.0, 50.0, 50.0),
+            &g.fonts.icon22,
+            a.accent.fade(ca),
+        );
     }
     let label = crate::mirror::status();
-    g.text(&label, Rect::new(24.0, 183.0, EXP_W - 48.0, 20.0), &g.fonts.tiny, T2.fade(ca), Align::Center);
+    g.text(
+        &label,
+        Rect::new(24.0, 183.0, EXP_W - 48.0, 20.0),
+        &g.fonts.tiny,
+        T2.fade(ca),
+        Align::Center,
+    );
 }
 
 fn page_window_manager(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let f = &g.fonts;
-    let names = ["Left", "Right", "Full", "Top left", "Top right", "Bottom left", "Bottom right", "Left third", "Middle third", "Right third"];
+    let names = [
+        "Left",
+        "Right",
+        "Full",
+        "Top left",
+        "Top right",
+        "Bottom left",
+        "Bottom right",
+        "Left third",
+        "Middle third",
+        "Right third",
+    ];
     for (i, title) in names.iter().enumerate() {
         let col = i % 5;
         let row = i / 5;
-        let r = Rect::new(20.0 + col as f32 * 114.0, 18.0 + row as f32 * 82.0, 107.0, 72.0);
+        let r = Rect::new(
+            20.0 + col as f32 * 114.0,
+            18.0 + row as f32 * 82.0,
+            107.0,
+            72.0,
+        );
         let act = Act::SnapLayout(i as u8);
         hits.push(Hit { r, act });
         g.fill_rrect(r, 13.0, (if hot(a, act) { HOVER } else { SURF }).fade(ca));
@@ -1865,12 +4054,36 @@ fn page_window_manager(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             _ => Rect::new(icon.x + icon.w * 2.0 / 3.0, icon.y, icon.w / 3.0, icon.h),
         };
         g.fill_rrect(fill, 3.0, a.accent.fade(0.60 * ca));
-        g.text(title, Rect::new(r.x + 2.0, r.y + 48.0, r.w - 4.0, 17.0), &f.tiny, T1.fade(ca), Align::Center);
+        g.text(
+            title,
+            Rect::new(r.x + 2.0, r.y + 48.0, r.w - 4.0, 17.0),
+            &f.tiny,
+            T1.fade(ca),
+            Align::Center,
+        );
     }
     let overlay = Rect::new(130.0, 187.0, EXP_W - 260.0, 30.0);
-    hits.push(Hit { r: overlay, act: Act::NativeSnapOverlay });
-    g.fill_rrect(overlay, 10.0, (if hot(a, Act::NativeSnapOverlay) { a.accent.fade(0.34) } else { HOVER }).fade(ca));
-    g.text("Open Windows 11 visual Snap Layouts (Win + Z)", overlay, &f.small, T1.fade(ca), Align::Center);
+    hits.push(Hit {
+        r: overlay,
+        act: Act::NativeSnapOverlay,
+    });
+    g.fill_rrect(
+        overlay,
+        10.0,
+        (if hot(a, Act::NativeSnapOverlay) {
+            a.accent.fade(0.34)
+        } else {
+            HOVER
+        })
+        .fade(ca),
+    );
+    g.text(
+        "Open Windows 11 visual Snap Layouts (Win + Z)",
+        overlay,
+        &f.small,
+        T1.fade(ca),
+        Align::Center,
+    );
 }
 
 // ----------------------------------------------------------------- power ----
@@ -1892,17 +4105,42 @@ fn page_power(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let danger = *k != 0 && armed(*k);
         // colour says how serious it is: calm blue and violet, amber for restart, red for shut down
         let tint = [C_CPU, C_UP, C_MEM, Color(1.0, 0.42, 0.45, 1.0)][i];
-        let bg = if danger { Color(0.85, 0.25, 0.28, 1.0) } else if hot(a, *act) { HOVER } else { SURF };
+        let bg = if danger {
+            Color(0.85, 0.25, 0.28, 1.0)
+        } else if hot(a, *act) {
+            HOVER
+        } else {
+            SURF
+        };
         g.fill_rrect(r, 20.0, bg.fade(ca));
         if !danger {
-            g.fill_rrect(r, 20.0, tint.fade((if hot(a, *act) { 0.14 } else { 0.07 }) * ca));
+            g.fill_rrect(
+                r,
+                20.0,
+                tint.fade((if hot(a, *act) { 0.14 } else { 0.07 }) * ca),
+            );
             g.fill_circle(r.cx(), r.y + 42.0, 24.0, tint.fade(0.16 * ca));
         }
-        g.icon(*glyph, Rect::new(r.x, r.y + 22.0, r.w, 40.0), &f.icon22, (if danger { Color::white(1.0) } else { tint }).fade(ca));
-        g.text(label, Rect::new(r.x, r.y + 70.0, r.w, 24.0), &f.body, (if danger { Color::white(1.0) } else { T1 }).fade(ca), Align::Center);
+        g.icon(
+            *glyph,
+            Rect::new(r.x, r.y + 22.0, r.w, 40.0),
+            &f.icon22,
+            (if danger { Color::white(1.0) } else { tint }).fade(ca),
+        );
+        g.text(
+            label,
+            Rect::new(r.x, r.y + 70.0, r.w, 24.0),
+            &f.body,
+            (if danger { Color::white(1.0) } else { T1 }).fade(ca),
+            Align::Center,
+        );
         if *k != 0 {
             g.text(
-                if danger { "Click again to confirm" } else { "Asks to confirm" },
+                if danger {
+                    "Click again to confirm"
+                } else {
+                    "Asks to confirm"
+                },
                 Rect::new(r.x + 4.0, r.y + 96.0, r.w - 8.0, 20.0),
                 &f.tiny,
                 (if danger { Color::white(0.95) } else { T3 }).fade(ca),
@@ -1923,17 +4161,54 @@ const C_FOC: Color = Color(1.0, 0.58, 0.42, 1.0);
 
 /// One inset tile: coloured icon + dim label, bold value, thin bar underneath.
 #[allow(clippy::too_many_arguments)]
-fn stat_tile(g: &Gfx, r: Rect, glyph: char, label: &str, value: &str, note: &str, frac: Option<f32>, col: Color, ca: f32) {
+fn stat_tile(
+    g: &Gfx,
+    r: Rect,
+    glyph: char,
+    label: &str,
+    value: &str,
+    note: &str,
+    frac: Option<f32>,
+    col: Color,
+    ca: f32,
+) {
     let f = &g.fonts;
     g.fill_rrect(r, 20.0, SURF.fade(ca));
-    g.icon(glyph, Rect::new(r.x + 14.0, r.y + 12.0, 22.0, 22.0), &f.icon14, col.fade(ca));
-    g.text(label, Rect::new(r.x + 42.0, r.y + 12.0, 120.0, 22.0), &f.small, T3.fade(ca), Align::Left);
-    g.text(note, Rect::new(r.x + r.w - 150.0, r.y + 12.0, 136.0, 22.0), &f.tiny, T3.fade(ca), Align::Right);
-    g.text(value, Rect::new(r.x + 16.0, r.y + 36.0, r.w - 32.0, 34.0), &f.big, T1.fade(ca), Align::Left);
+    g.icon(
+        glyph,
+        Rect::new(r.x + 14.0, r.y + 12.0, 22.0, 22.0),
+        &f.icon14,
+        col.fade(ca),
+    );
+    g.text(
+        label,
+        Rect::new(r.x + 42.0, r.y + 12.0, 120.0, 22.0),
+        &f.small,
+        T3.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        note,
+        Rect::new(r.x + r.w - 150.0, r.y + 12.0, 136.0, 22.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Right,
+    );
+    g.text(
+        value,
+        Rect::new(r.x + 16.0, r.y + 36.0, r.w - 32.0, 34.0),
+        &f.big,
+        T1.fade(ca),
+        Align::Left,
+    );
     if let Some(fr) = frac {
         let bar = Rect::new(r.x + 16.0, r.y + r.h - 18.0, r.w - 32.0, 5.0);
         g.fill_rrect(bar, 2.5, Color::white(0.10 * ca));
-        g.fill_rrect(Rect::new(bar.x, bar.y, (bar.w * fr.clamp(0.0, 1.0)).max(5.0), bar.h), 2.5, col.fade(ca));
+        g.fill_rrect(
+            Rect::new(bar.x, bar.y, (bar.w * fr.clamp(0.0, 1.0)).max(5.0), bar.h),
+            2.5,
+            col.fade(ca),
+        );
     }
 }
 
@@ -1941,74 +4216,247 @@ fn page_stats(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let (w, h, gap) = (280.0, 92.0, 12.0);
     let at = |c: f32, r: f32| Rect::new(14.0 + c * (w + gap), 6.0 + r * (h + gap), w, h);
-    stat_tile(g, at(0.0, 0.0), '\u{E9D9}', "CPU", &format!("{}%", a.stat_cpu), "", Some(a.bar_cpu), C_CPU, ca);
-    stat_tile(g, at(1.0, 0.0), '\u{E964}', "Memory", &format!("{}%", a.stat_mem), "", Some(a.bar_mem), C_MEM, ca);
+    stat_tile(
+        g,
+        at(0.0, 0.0),
+        '\u{E9D9}',
+        "CPU",
+        &format!("{}%", a.stat_cpu),
+        "",
+        Some(a.bar_cpu),
+        C_CPU,
+        ca,
+    );
+    stat_tile(
+        g,
+        at(1.0, 0.0),
+        '\u{E964}',
+        "Memory",
+        &format!("{}%", a.stat_mem),
+        "",
+        Some(a.bar_mem),
+        C_MEM,
+        ca,
+    );
     // CPU history beside the value
     let r = at(0.0, 0.0);
     let n = a.stat_hist.len();
     for (i, v) in a.stat_hist.iter().enumerate() {
         let bh = 2.0 + v.clamp(0.0, 1.0) * 22.0;
-        g.fill_rrect(Rect::new(r.x + r.w - 16.0 - (n - i) as f32 * 4.6, r.y + 62.0 - bh, 3.0, bh), 1.5, C_CPU.fade(((i + 1) as f32 / n.max(1) as f32) * 0.7 * ca));
+        g.fill_rrect(
+            Rect::new(
+                r.x + r.w - 16.0 - (n - i) as f32 * 4.6,
+                r.y + 62.0 - bh,
+                3.0,
+                bh,
+            ),
+            1.5,
+            C_CPU.fade(((i + 1) as f32 / n.max(1) as f32) * 0.7 * ca),
+        );
     }
     match sys::battery_info() {
         Some(b) => {
-            let state = if b.charging { "Charging" } else if b.plugged { "Plugged in" } else { "On battery" };
-            let col = if b.percent <= 20 && !b.charging { Color(1.0, 0.45, 0.4, 1.0) } else { C_BAT };
-            stat_tile(g, at(0.0, 1.0), '\u{E83F}', "Battery", &format!("{}%", b.percent), state, Some(b.percent as f32 / 100.0), col, ca);
+            let state = if b.charging {
+                "Charging"
+            } else if b.plugged {
+                "Plugged in"
+            } else {
+                "On battery"
+            };
+            let col = if b.percent <= 20 && !b.charging {
+                Color(1.0, 0.45, 0.4, 1.0)
+            } else {
+                C_BAT
+            };
+            stat_tile(
+                g,
+                at(0.0, 1.0),
+                '\u{E83F}',
+                "Battery",
+                &format!("{}%", b.percent),
+                state,
+                Some(b.percent as f32 / 100.0),
+                col,
+                ca,
+            );
         }
-        None => stat_tile(g, at(0.0, 1.0), '\u{E83F}', "Power", "Plugged in", "No battery", None, C_BAT, ca),
+        None => stat_tile(
+            g,
+            at(0.0, 1.0),
+            '\u{E83F}',
+            "Power",
+            "Plugged in",
+            "No battery",
+            None,
+            C_BAT,
+            ca,
+        ),
     }
     let up = sys::uptime_secs();
     let (d, hh, m) = (up / 86400, (up % 86400) / 3600, (up % 3600) / 60);
-    let text = if d > 0 { format!("{d}d {hh}h {m}m") } else { format!("{hh}h {m}m") };
+    let text = if d > 0 {
+        format!("{d}d {hh}h {m}m")
+    } else {
+        format!("{hh}h {m}m")
+    };
     // A visible monitor readout makes it possible to verify that Nock is
     // detecting actual I/O before assuming a particular app is supported.
     let transfer_note = if let Some(copy) = crate::explorer_copy::current() {
         let note = format!("Explorer {}%", (copy * 100.0).round() as u32);
-        if let Some(q) = crate::qbit::current() { format!("{note} · qBit {}%", (q.percent * 100.0).round() as u32) } else { note }
+        if let Some(q) = crate::qbit::current() {
+            format!("{note} · qBit {}%", (q.percent * 100.0).round() as u32)
+        } else {
+            note
+        }
     } else if let Some(q) = crate::qbit::current() {
         format!("qBit {}%", (q.percent * 100.0).round() as u32)
     } else if let Some(p) = crate::prism::current() {
-        let percent = p.percent.map(|v| format!("{}%", (v * 100.0).round() as u32)).unwrap_or_else(|| "active".into());
+        let percent = p
+            .percent
+            .map(|v| format!("{}%", (v * 100.0).round() as u32))
+            .unwrap_or_else(|| "active".into());
         format!("Prism {percent}")
     } else if let Some(io) = crate::transfer::current() {
         format!("{} I/O", io.app)
     } else {
         "I/O idle".to_string()
     };
-    stat_tile(g, at(1.0, 1.0), '\u{E916}', "Uptime", &text, &transfer_note, None, C_UP, ca);
+    stat_tile(
+        g,
+        at(1.0, 1.0),
+        '\u{E916}',
+        "Uptime",
+        &text,
+        &transfer_note,
+        None,
+        C_UP,
+        ca,
+    );
     let r = Rect::new(448.0, 158.0, 122.0, 28.0);
-    hits.push(Hit { r, act: Act::ProcessOpen });
-    g.fill_rrect(r, 12.0, (if hot(a, Act::ProcessOpen) { HOVER } else { SURF }).fade(ca));
-    g.text("Task Manager ›", r, &g.fonts.small, T1.fade(ca), Align::Center);
+    hits.push(Hit {
+        r,
+        act: Act::ProcessOpen,
+    });
+    g.fill_rrect(
+        r,
+        12.0,
+        (if hot(a, Act::ProcessOpen) {
+            HOVER
+        } else {
+            SURF
+        })
+        .fade(ca),
+    );
+    g.text(
+        "Task Manager ›",
+        r,
+        &g.fonts.small,
+        T1.fade(ca),
+        Align::Center,
+    );
 }
 
 fn page_processes(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let f = &g.fonts;
-    g.text("Most demanding processes", Rect::new(22.0, 0.0, 265.0, 24.0), &f.small, T2.fade(ca), Align::Left);
+    g.text(
+        "Most demanding processes",
+        Rect::new(22.0, 0.0, 265.0, 24.0),
+        &f.small,
+        T2.fade(ca),
+        Align::Left,
+    );
     let toggle = Rect::new(323.0, 0.0, 145.0, 26.0);
-    hits.push(Hit { r: toggle, act: Act::ProcessSort });
+    hits.push(Hit {
+        r: toggle,
+        act: Act::ProcessSort,
+    });
     g.fill_rrect(toggle, 12.0, SURF.fade(ca));
-    g.text(if a.proc_sort_cpu { "Sort: CPU" } else { "Sort: RAM" }, toggle, &f.small, T1.fade(ca), Align::Center);
+    g.text(
+        if a.proc_sort_cpu {
+            "Sort: CPU"
+        } else {
+            "Sort: RAM"
+        },
+        toggle,
+        &f.small,
+        T1.fade(ca),
+        Align::Center,
+    );
     let refresh = Rect::new(480.0, 0.0, 94.0, 26.0);
-    hits.push(Hit { r: refresh, act: Act::ProcessRefresh });
+    hits.push(Hit {
+        r: refresh,
+        act: Act::ProcessRefresh,
+    });
     g.fill_rrect(refresh, 12.0, SURF.fade(ca));
     g.text("Refresh", refresh, &f.small, T1.fade(ca), Align::Center);
     for (i, p) in a.processes.iter().take(5).enumerate() {
         let y = 33.0 + i as f32 * 32.0;
         let r = Rect::new(18.0, y, EXP_W - 36.0, 30.0);
-        g.fill_rrect(r, 9.0, (if i % 2 == 0 { SURF } else { Color::white(0.045) }).fade(ca));
-        g.text(&p.name, Rect::new(28.0, y, 275.0, 30.0), &f.small, T1.fade(ca), Align::Left);
-        g.text(&format!("{:.1}% CPU", p.cpu_pct), Rect::new(315.0, y, 94.0, 30.0), &f.tiny, C_CPU.fade(ca), Align::Right);
-        g.text(&format!("{} MB", p.ram_mb), Rect::new(415.0, y, 70.0, 30.0), &f.tiny, C_MEM.fade(ca), Align::Right);
+        g.fill_rrect(
+            r,
+            9.0,
+            (if i % 2 == 0 {
+                SURF
+            } else {
+                Color::white(0.045)
+            })
+            .fade(ca),
+        );
+        g.text(
+            &p.name,
+            Rect::new(28.0, y, 275.0, 30.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
+        g.text(
+            &format!("{:.1}% CPU", p.cpu_pct),
+            Rect::new(315.0, y, 94.0, 30.0),
+            &f.tiny,
+            C_CPU.fade(ca),
+            Align::Right,
+        );
+        g.text(
+            &format!("{} MB", p.ram_mb),
+            Rect::new(415.0, y, 70.0, 30.0),
+            &f.tiny,
+            C_MEM.fade(ca),
+            Align::Right,
+        );
         let kill = Rect::new(495.0, y + 2.0, 80.0, 26.0);
-        hits.push(Hit { r: kill, act: Act::ProcessEnd(p.pid) });
-        let confirm = a.proc_confirm.is_some_and(|(pid, t)| pid == p.pid && t.elapsed().as_secs() < 4);
-        g.fill_rrect(kill, 9.0, (if confirm { Color(0.75, 0.15, 0.2, 1.0) } else { HOVER }).fade(ca));
-        g.text(if confirm { "Confirm" } else { "End task" }, kill, &f.tiny, T1.fade(ca), Align::Center);
+        hits.push(Hit {
+            r: kill,
+            act: Act::ProcessEnd(p.pid),
+        });
+        let confirm = a
+            .proc_confirm
+            .is_some_and(|(pid, t)| pid == p.pid && t.elapsed().as_secs() < 4);
+        g.fill_rrect(
+            kill,
+            9.0,
+            (if confirm {
+                Color(0.75, 0.15, 0.2, 1.0)
+            } else {
+                HOVER
+            })
+            .fade(ca),
+        );
+        g.text(
+            if confirm { "Confirm" } else { "End task" },
+            kill,
+            &f.tiny,
+            T1.fade(ca),
+            Align::Center,
+        );
     }
-    g.text("Only active while this panel is open. End task can lose unsaved work.", Rect::new(20.0, 192.0, 555.0, 15.0), &f.tiny, T3.fade(ca), Align::Center);
+    g.text(
+        "Only active while this panel is open. End task can lose unsaved work.",
+        Rect::new(20.0, 192.0, 555.0, 15.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Center,
+    );
 }
 
 fn page_calculator(a: &App, ca: f32, hits: &mut Vec<Hit>) {
@@ -2016,19 +4464,42 @@ fn page_calculator(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let f = &g.fonts;
     let display = Rect::new(133.0, 0.0, 334.0, 34.0);
     g.fill_rrect(display, 11.0, SURF.fade(ca));
-    g.text(&a.calc_input, Rect::new(display.x + 10.0, 0.0, display.w - 20.0, 34.0), &f.title, T1.fade(ca), Align::Right);
+    g.text(
+        &a.calc_input,
+        Rect::new(display.x + 10.0, 0.0, display.w - 20.0, 34.0),
+        &f.title,
+        T1.fade(ca),
+        Align::Right,
+    );
     const KEYS: [&str; 4] = ["789/", "456*", "123-", "C0.="];
     for (row, keys) in KEYS.iter().enumerate() {
         for (col, key) in keys.chars().enumerate() {
-            let r = Rect::new(133.0 + col as f32 * 85.0, 40.0 + row as f32 * 39.0, 78.0, 34.0);
+            let r = Rect::new(
+                133.0 + col as f32 * 85.0,
+                40.0 + row as f32 * 39.0,
+                78.0,
+                34.0,
+            );
             let act = Act::CalcKey(key);
             hits.push(Hit { r, act });
-            let bg = if hot(a, act) { HOVER } else if "+-*/=".contains(key) { a.accent.fade(0.25) } else { SURF };
+            let bg = if hot(a, act) {
+                HOVER
+            } else if "+-*/=".contains(key) {
+                a.accent.fade(0.25)
+            } else {
+                SURF
+            };
             g.fill_rrect(r, 10.0, bg.fade(ca));
             g.text(&key.to_string(), r, &f.body, T1.fade(ca), Align::Center);
         }
     }
-    g.text("Use +, -, *, / and =. C clears the calculation.", Rect::new(110.0, 198.0, 390.0, 16.0), &f.tiny, T3.fade(ca), Align::Center);
+    g.text(
+        "Use +, -, *, / and =. C clears the calculation.",
+        Rect::new(110.0, 198.0, 390.0, 16.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Center,
+    );
 }
 
 // ------------------------------------------------------------- clipboard ----
@@ -2040,16 +4511,53 @@ fn page_typing(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let remaining = (t.duration_s as f32 - t.elapsed()).ceil().max(0.0) as u32;
     let summary = Rect::new(18.0, 5.0, 564.0, 46.0);
     g.fill_rrect(summary, 15.0, SURF.fade(ca));
-    g.text(&format!("{} WPM", t.wpm()), Rect::new(32.0, 10.0, 135.0, 32.0), &f.title, a.accent.fade(ca), Align::Left);
-    g.text(&format!("{}% accuracy", t.accuracy()), Rect::new(189.0, 12.0, 162.0, 28.0), &f.small, T2.fade(ca), Align::Left);
-    g.text(&format!("{}s left", remaining), Rect::new(419.0, 12.0, 143.0, 28.0), &f.small, T1.fade(ca), Align::Right);
+    g.text(
+        &format!("{} WPM", t.wpm()),
+        Rect::new(32.0, 10.0, 135.0, 32.0),
+        &f.title,
+        a.accent.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        &format!("{}% accuracy", t.accuracy()),
+        Rect::new(189.0, 12.0, 162.0, 28.0),
+        &f.small,
+        T2.fade(ca),
+        Align::Left,
+    );
+    g.text(
+        &format!("{}s left", remaining),
+        Rect::new(419.0, 12.0, 143.0, 28.0),
+        &f.small,
+        T1.fade(ca),
+        Align::Right,
+    );
     let progress = Rect::new(25.0, 59.0, 550.0, 3.0);
     g.fill_rrect(progress, 1.5, SURF.fade(ca));
     if t.started.is_some() {
-        g.fill_rrect(Rect::new(progress.x, progress.y, progress.w * (t.elapsed() / t.duration_s as f32).clamp(0.0, 1.0), progress.h), 1.5, a.accent.fade(ca));
+        g.fill_rrect(
+            Rect::new(
+                progress.x,
+                progress.y,
+                progress.w * (t.elapsed() / t.duration_s as f32).clamp(0.0, 1.0),
+                progress.h,
+            ),
+            1.5,
+            a.accent.fade(ca),
+        );
     }
-    g.text("TYPE THIS", Rect::new(26.0, 72.0, 180.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
-    g.fill_rrect(Rect::new(19.0, 93.0, 562.0, 87.0), 12.0, Color::white(0.08 * ca));
+    g.text(
+        "TYPE THIS",
+        Rect::new(26.0, 72.0, 180.0, 18.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Left,
+    );
+    g.fill_rrect(
+        Rect::new(19.0, 93.0, 562.0, 87.0),
+        12.0,
+        Color::white(0.08 * ca),
+    );
     // Render a rolling three-line window; the long text continues seamlessly.
     // Wrap on word boundaries so the practice paragraph stays readable.
     let mut lines: Vec<(usize, String)> = Vec::new();
@@ -2060,32 +4568,118 @@ fn page_typing(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             lines.push((start, std::mem::take(&mut line)));
             start += lines.last().map_or(0, |(_, s)| s.len() + 1);
         }
-        if !line.is_empty() { line.push(' '); }
+        if !line.is_empty() {
+            line.push(' ');
+        }
         line.push_str(word);
     }
-    if !line.is_empty() { lines.push((start, line)); }
+    if !line.is_empty() {
+        lines.push((start, line));
+    }
     let typed_len = t.typed.len();
-    let active = lines.iter().rposition(|(s, _)| *s <= typed_len).unwrap_or(0);
+    let active = lines
+        .iter()
+        .rposition(|(s, _)| *s <= typed_len)
+        .unwrap_or(0);
     let first = active.saturating_sub(1).min(lines.len().saturating_sub(3));
     for (i, (start, value)) in lines.iter().skip(first).take(3).enumerate() {
         let r = Rect::new(33.0, 100.0 + i as f32 * 25.0, 534.0, 24.0);
-        g.text(value, r, &f.body, if *start <= typed_len { T1.fade(ca) } else { T3.fade(ca) }, Align::Left);
+        g.text(
+            value,
+            r,
+            &f.body,
+            if *start <= typed_len {
+                T1.fade(ca)
+            } else {
+                T3.fade(ca)
+            },
+            Align::Left,
+        );
     }
-    let input_color = if t.typed.chars().zip(t.prompt().chars()).all(|(c, expected)| c == expected) { Color(0.48, 0.89, 0.67, 1.0) } else { Color(0.97, 0.53, 0.52, 1.0) };
-    let last_words = if t.typed.len() > 54 { &t.typed[t.typed.len() - 54..] } else { &t.typed };
-    g.text(if t.typed.is_empty() { "Start typing to begin..." } else { last_words }, Rect::new(27.0, 181.0, 390.0, 18.0), &f.small, if t.typed.is_empty() { T3.fade(ca) } else { input_color.fade(ca) }, Align::Left);
-    if t.finished {
-        g.text(&format!("Finished! {} WPM · Best: {}", t.wpm(), t.best_wpm), Rect::new(24.0, 199.0, 370.0, 12.0), &f.tiny, T1.fade(ca), Align::Left);
+    let input_color = if t
+        .typed
+        .chars()
+        .zip(t.prompt().chars())
+        .all(|(c, expected)| c == expected)
+    {
+        Color(0.48, 0.89, 0.67, 1.0)
     } else {
-        g.text("Backspace to fix · Esc to exit", Rect::new(24.0, 199.0, 330.0, 12.0), &f.tiny, T3.fade(ca), Align::Left);
+        Color(0.97, 0.53, 0.52, 1.0)
+    };
+    let last_words = if t.typed.len() > 54 {
+        &t.typed[t.typed.len() - 54..]
+    } else {
+        &t.typed
+    };
+    g.text(
+        if t.typed.is_empty() {
+            "Start typing to begin..."
+        } else {
+            last_words
+        },
+        Rect::new(27.0, 181.0, 390.0, 18.0),
+        &f.small,
+        if t.typed.is_empty() {
+            T3.fade(ca)
+        } else {
+            input_color.fade(ca)
+        },
+        Align::Left,
+    );
+    if t.finished {
+        g.text(
+            &format!("Finished! {} WPM · Best: {}", t.wpm(), t.best_wpm),
+            Rect::new(24.0, 199.0, 370.0, 12.0),
+            &f.tiny,
+            T1.fade(ca),
+            Align::Left,
+        );
+    } else {
+        g.text(
+            "Backspace to fix · Esc to exit",
+            Rect::new(24.0, 199.0, 330.0, 12.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
     }
     let duration = Rect::new(421.0, 181.0, 70.0, 22.0);
-    hits.push(Hit { r: duration, act: Act::TypingDuration });
-    g.fill_rrect(duration, 10.0, (if hot(a, Act::TypingDuration) { HOVER } else { SURF }).fade(ca));
-    g.text(&format!("{}s", t.duration_s), duration, &f.small, T1.fade(ca), Align::Center);
+    hits.push(Hit {
+        r: duration,
+        act: Act::TypingDuration,
+    });
+    g.fill_rrect(
+        duration,
+        10.0,
+        (if hot(a, Act::TypingDuration) {
+            HOVER
+        } else {
+            SURF
+        })
+        .fade(ca),
+    );
+    g.text(
+        &format!("{}s", t.duration_s),
+        duration,
+        &f.small,
+        T1.fade(ca),
+        Align::Center,
+    );
     let retry = Rect::new(494.0, 181.0, 79.0, 22.0);
-    hits.push(Hit { r: retry, act: Act::TypingRestart });
-    g.fill_rrect(retry, 12.0, (if hot(a, Act::TypingRestart) { HOVER } else { SURF }).fade(ca));
+    hits.push(Hit {
+        r: retry,
+        act: Act::TypingRestart,
+    });
+    g.fill_rrect(
+        retry,
+        12.0,
+        (if hot(a, Act::TypingRestart) {
+            HOVER
+        } else {
+            SURF
+        })
+        .fade(ca),
+    );
     g.text("New text", retry, &f.tiny, T1.fade(ca), Align::Center);
 }
 
@@ -2100,10 +4694,19 @@ fn page_clipboard(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     } else {
         format!("Clipboard  \u{00B7}  {}", total)
     };
-    g.text(&head, Rect::new(28.0, 12.0, 200.0, 24.0), &f.small, C_MEM.fade(ca), Align::Left);
+    g.text(
+        &head,
+        Rect::new(28.0, 12.0, 200.0, 24.0),
+        &f.small,
+        C_MEM.fade(ca),
+        Align::Left,
+    );
     if !a.clips.is_empty() {
         let r = Rect::new(EXP_W - 112.0, 12.0, 64.0, 24.0);
-        hits.push(Hit { r, act: Act::ClipClear });
+        hits.push(Hit {
+            r,
+            act: Act::ClipClear,
+        });
         if hot(a, Act::ClipClear) {
             g.fill_rrect(r, 12.0, Color::white(0.10 * ca));
         }
@@ -2118,36 +4721,87 @@ fn page_clipboard(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             t.push('\u{2502}');
         }
         g.fill_rrect(sr, 12.0, Color::white(0.14 * ca));
-        g.text(&t, Rect::new(sr.x + 10.0, sr.y, sr.w - 30.0, sr.h), &f.small, T1.fade(ca), Align::Left);
+        g.text(
+            &t,
+            Rect::new(sr.x + 10.0, sr.y, sr.w - 30.0, sr.h),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
         if !typing {
             let x = Rect::new(sr.x + sr.w - 24.0, sr.y, 24.0, sr.h);
-            hits.push(Hit { r: sr, act: Act::ClipSearch });
-            hits.push(Hit { r: x, act: Act::ClipSearchClear });
-            g.icon('\u{E711}', x, &f.icon14, (if hot(a, Act::ClipSearchClear) { T1 } else { T2 }).fade(ca));
+            hits.push(Hit {
+                r: sr,
+                act: Act::ClipSearch,
+            });
+            hits.push(Hit {
+                r: x,
+                act: Act::ClipSearchClear,
+            });
+            g.icon(
+                '\u{E711}',
+                x,
+                &f.icon14,
+                (if hot(a, Act::ClipSearchClear) { T1 } else { T2 }).fade(ca),
+            );
         }
     } else {
-        hits.push(Hit { r: sr, act: Act::ClipSearch });
+        hits.push(Hit {
+            r: sr,
+            act: Act::ClipSearch,
+        });
         if hot(a, Act::ClipSearch) {
             g.fill_rrect(sr, 12.0, Color::white(0.10 * ca));
         }
-        g.icon('\u{E721}', Rect::new(sr.x + 4.0, sr.y, 24.0, sr.h), &f.icon14, T3.fade(ca));
-        g.text("Search", Rect::new(sr.x + 30.0, sr.y, sr.w - 34.0, sr.h), &f.small, T3.fade(ca), Align::Left);
+        g.icon(
+            '\u{E721}',
+            Rect::new(sr.x + 4.0, sr.y, 24.0, sr.h),
+            &f.icon14,
+            T3.fade(ca),
+        );
+        g.text(
+            "Search",
+            Rect::new(sr.x + 30.0, sr.y, sr.w - 34.0, sr.h),
+            &f.small,
+            T3.fade(ca),
+            Align::Left,
+        );
     }
 
     if view.is_empty() {
         let (l1, l2) = if a.clip_filter.is_empty() {
-            ("Copy something and it will appear here.", "Click an item to paste it. Click the star to pin it as a saved snippet.")
+            (
+                "Copy something and it will appear here.",
+                "Click an item to paste it. Click the star to pin it as a saved snippet.",
+            )
         } else {
-            ("No matches.", "Press Esc in the search box to clear the filter.")
+            (
+                "No matches.",
+                "Press Esc in the search box to clear the filter.",
+            )
         };
-        g.text(l1, Rect::new(0.0, 80.0, EXP_W, 24.0), &f.body, T3.fade(ca), Align::Center);
-        g.text(l2, Rect::new(0.0, 104.0, EXP_W, 20.0), &f.small, T3.fade(ca * 0.8), Align::Center);
+        g.text(
+            l1,
+            Rect::new(0.0, 80.0, EXP_W, 24.0),
+            &f.body,
+            T3.fade(ca),
+            Align::Center,
+        );
+        g.text(
+            l2,
+            Rect::new(0.0, 104.0, EXP_W, 20.0),
+            &f.small,
+            T3.fade(ca * 0.8),
+            Align::Center,
+        );
         return;
     }
 
     for row in 0..CLIP_ROWS {
         let idx = a.clip_scroll + row;
-        let Some((text, pinned)) = view.get(idx) else { break };
+        let Some((text, pinned)) = view.get(idx) else {
+            break;
+        };
         let r = Rect::new(24.0, 40.0 + row as f32 * 31.0, EXP_W - 48.0, 28.0);
         let act = Act::ClipItem(idx);
         hits.push(Hit { r, act });
@@ -2165,7 +4819,13 @@ fn page_clipboard(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let chip = Rect::new(r.x + 6.0, r.y + 3.0, 22.0, 22.0);
         g.fill_circle(chip.cx(), chip.cy(), 11.0, kc.fade(0.20 * ca));
         g.icon(kind, chip, &f.icon14, kc.fade(ca));
-        g.text(&preview(text), Rect::new(r.x + 38.0, r.y, r.w - 76.0, r.h), &f.body, T1.fade(ca), Align::Left);
+        g.text(
+            &preview(text),
+            Rect::new(r.x + 38.0, r.y, r.w - 76.0, r.h),
+            &f.body,
+            T1.fade(ca),
+            Align::Left,
+        );
         let (glyph, col) = if *pinned {
             ('\u{E735}', C_GOLD)
         } else if hot(a, pact) {
@@ -2173,7 +4833,18 @@ fn page_clipboard(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         } else {
             ('\u{E734}', T3)
         };
-        g.icon(glyph, pin, &f.icon14, col.fade(ca * if *pinned || hot(a, act) || hot(a, pact) { 1.0 } else { 0.6 }));
+        g.icon(
+            glyph,
+            pin,
+            &f.icon14,
+            col.fade(
+                ca * if *pinned || hot(a, act) || hot(a, pact) {
+                    1.0
+                } else {
+                    0.6
+                },
+            ),
+        );
     }
 
     // scroll bar: the thumb's size shows how much of the list is on screen, its place where you are
@@ -2183,7 +4854,16 @@ fn page_clipboard(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         g.fill_rrect(track, 2.0, Color::white(0.07 * ca));
         let thumb_h = (h * CLIP_ROWS as f32 / view.len() as f32).max(18.0);
         let frac = a.clip_scroll as f32 / (view.len() - CLIP_ROWS) as f32;
-        g.fill_rrect(Rect::new(track.x, top + (h - thumb_h) * frac.clamp(0.0, 1.0), 4.0, thumb_h), 2.0, C_MEM.fade(0.8 * ca));
+        g.fill_rrect(
+            Rect::new(
+                track.x,
+                top + (h - thumb_h) * frac.clamp(0.0, 1.0),
+                4.0,
+                thumb_h,
+            ),
+            2.0,
+            C_MEM.fade(0.8 * ca),
+        );
     }
 }
 
@@ -2206,7 +4886,12 @@ fn clip_kind(s: &str) -> (char, Color) {
 fn spinner(g: &Gfx, cx: f32, cy: f32, r: f32, t: f32, col: Color, ca: f32) {
     for i in 0..10 {
         let ang = t * 6.0 - i as f32 * 0.55;
-        g.fill_circle(cx + r * ang.cos(), cy + r * ang.sin(), 3.4 - i as f32 * 0.25, col.fade((1.0 - i as f32 / 10.0) * ca));
+        g.fill_circle(
+            cx + r * ang.cos(),
+            cy + r * ang.sin(),
+            3.4 - i as f32 * 0.25,
+            col.fade((1.0 - i as f32 / 10.0) * ca),
+        );
     }
 }
 
@@ -2221,7 +4906,12 @@ fn page_apps(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let gap = (EXP_W - 56.0 - cols as f32 * tw) / (cols as f32 - 1.0);
     let cell = |i: usize| {
         let (c, r) = (i % cols, i / cols);
-        Rect::new(28.0 + c as f32 * (tw + gap), 6.0 + r as f32 * (th + 8.0), tw, th)
+        Rect::new(
+            28.0 + c as f32 * (tw + gap),
+            6.0 + r as f32 * (th + 8.0),
+            tw,
+            th,
+        )
     };
     for (i, e) in a.apps.iter().enumerate().take(12) {
         let rect = cell(i);
@@ -2239,26 +4929,81 @@ fn page_apps(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             None => {
                 let hue = name_color(&e.name);
                 g.fill_circle(ic.cx(), ic.cy(), 18.0, hue.fade(ca));
-                let letter: String = e.name.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
-                g.text(&letter, ic, &g.fonts.title, Color(0.0, 0.0, 0.0, 0.75 * ca), Align::Center);
+                let letter: String = e
+                    .name
+                    .chars()
+                    .next()
+                    .map(|c| c.to_uppercase().collect())
+                    .unwrap_or_default();
+                g.text(
+                    &letter,
+                    ic,
+                    &g.fonts.title,
+                    Color(0.0, 0.0, 0.0, 0.75 * ca),
+                    Align::Center,
+                );
             }
         }
-        g.text(&e.name, Rect::new(rect.x + 4.0, rect.y + 52.0, rect.w - 8.0, 24.0), &f.tiny, T2.fade(ca), Align::Center);
+        g.text(
+            &e.name,
+            Rect::new(rect.x + 4.0, rect.y + 52.0, rect.w - 8.0, 24.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Center,
+        );
         if over {
             // unpin
             g.fill_circle(x.cx(), x.cy(), 8.5, Color(0.0, 0.0, 0.0, 0.75 * ca));
-            g.icon('\u{E711}', x, &f.icon14, (if hot(a, xact) { Color(1.0, 0.5, 0.5, 1.0) } else { T1 }).fade(ca));
+            g.icon(
+                '\u{E711}',
+                x,
+                &f.icon14,
+                (if hot(a, xact) {
+                    Color(1.0, 0.5, 0.5, 1.0)
+                } else {
+                    T1
+                })
+                .fade(ca),
+            );
         }
     }
     if a.apps.len() < 12 {
         let rect = cell(a.apps.len());
-        hits.push(Hit { r: rect, act: Act::AppAdd });
+        hits.push(Hit {
+            r: rect,
+            act: Act::AppAdd,
+        });
         let on = hot(a, Act::AppAdd);
-        g.fill_rrect(rect, 16.0, Color::white((if on { 0.12 } else { 0.04 }) * ca));
-        g.stroke_rrect(rect, 16.0, Color::white((if on { 0.35 } else { 0.14 }) * ca), 1.0);
-        g.fill_circle(rect.cx(), rect.y + 28.0, 18.0, a.accent.fade((if on { 0.4 } else { 0.22 }) * ca));
-        g.icon('\u{E710}', Rect::new(rect.cx() - 18.0, rect.y + 10.0, 36.0, 36.0), &f.icon14, a.accent.fade(ca));
-        g.text("Add app", Rect::new(rect.x + 4.0, rect.y + 52.0, rect.w - 8.0, 24.0), &f.tiny, T2.fade(ca), Align::Center);
+        g.fill_rrect(
+            rect,
+            16.0,
+            Color::white((if on { 0.12 } else { 0.04 }) * ca),
+        );
+        g.stroke_rrect(
+            rect,
+            16.0,
+            Color::white((if on { 0.35 } else { 0.14 }) * ca),
+            1.0,
+        );
+        g.fill_circle(
+            rect.cx(),
+            rect.y + 28.0,
+            18.0,
+            a.accent.fade((if on { 0.4 } else { 0.22 }) * ca),
+        );
+        g.icon(
+            '\u{E710}',
+            Rect::new(rect.cx() - 18.0, rect.y + 10.0, 36.0, 36.0),
+            &f.icon14,
+            a.accent.fade(ca),
+        );
+        g.text(
+            "Add app",
+            Rect::new(rect.x + 4.0, rect.y + 52.0, rect.w - 8.0, 24.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Center,
+        );
     }
 }
 
@@ -2270,19 +5015,63 @@ fn page_shelf(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         // a file is being dragged over the notch
         g.fill_rrect(area, 18.0, a.accent.fade(0.14 * ca));
         g.stroke_rrect(area, 18.0, a.accent.fade(0.9 * ca), 2.0);
-        g.text("Drop to add to the shelf", area, &f.body, T1.fade(ca), Align::Center);
+        g.text(
+            "Drop to add to the shelf",
+            area,
+            &f.body,
+            T1.fade(ca),
+            Align::Center,
+        );
         return;
     }
     if a.shelf.is_empty() {
         g.stroke_rrect(area, 18.0, Color::white(0.14 * ca), 1.0);
-        if a.mascot_visible { draw_miso_at(a, ca, area.cx(), 82.0, false); }
-        else { g.icon('\u{E896}', Rect::new(area.cx() - 20.0, 62.0, 40.0, 40.0), &f.icon22, a.accent.fade(ca)); }
-        g.text("Drop files here to keep them handy", Rect::new(area.x, 108.0, area.w, 24.0), &f.body, T1.fade(ca), Align::Center);
-        g.text("Or copy a file in Explorer, then click below", Rect::new(area.x, 132.0, area.w, 22.0), &f.small, T3.fade(ca), Align::Center);
+        if a.mascot_visible {
+            draw_miso_at(a, ca, area.cx(), 82.0, false);
+        } else {
+            g.icon(
+                '\u{E896}',
+                Rect::new(area.cx() - 20.0, 62.0, 40.0, 40.0),
+                &f.icon22,
+                a.accent.fade(ca),
+            );
+        }
+        g.text(
+            "Drop files here to keep them handy",
+            Rect::new(area.x, 108.0, area.w, 24.0),
+            &f.body,
+            T1.fade(ca),
+            Align::Center,
+        );
+        g.text(
+            "Or copy a file in Explorer, then click below",
+            Rect::new(area.x, 132.0, area.w, 22.0),
+            &f.small,
+            T3.fade(ca),
+            Align::Center,
+        );
         let paste = Rect::new(199.0, 161.0, 202.0, 33.0);
-        hits.push(Hit { r: paste, act: Act::ShelfPaste });
-        g.fill_rrect(paste, 11.0, (if hot(a, Act::ShelfPaste) { a.accent.fade(0.40) } else { HOVER }).fade(ca));
-        g.text("Paste copied files", paste, &f.small, T1.fade(ca), Align::Center);
+        hits.push(Hit {
+            r: paste,
+            act: Act::ShelfPaste,
+        });
+        g.fill_rrect(
+            paste,
+            11.0,
+            (if hot(a, Act::ShelfPaste) {
+                a.accent.fade(0.40)
+            } else {
+                HOVER
+            })
+            .fade(ca),
+        );
+        g.text(
+            "Paste copied files",
+            paste,
+            &f.small,
+            T1.fade(ca),
+            Align::Center,
+        );
         return;
     }
     // Files remain on the left while their Quick Look stays inside Shelf.
@@ -2290,7 +5079,12 @@ fn page_shelf(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let gap = 6.0;
     for (i, path) in a.shelf.iter().enumerate() {
         let (c, r) = (i % cols, i / cols);
-        let rect = Rect::new(22.0 + c as f32 * (tw + gap), 6.0 + r as f32 * (th + 5.0), tw, th);
+        let rect = Rect::new(
+            22.0 + c as f32 * (tw + gap),
+            6.0 + r as f32 * (th + 5.0),
+            tw,
+            th,
+        );
         let act = Act::ShelfPreview(i);
         hits.push(Hit { r: rect, act });
         let x = Rect::new(rect.x + rect.w - 17.0, rect.y + 1.0, 17.0, 17.0);
@@ -2299,101 +5093,293 @@ fn page_shelf(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let selected = a.shelf_preview_path == *path;
         let over = hot(a, act) || hot(a, xact);
         let k = hot_k(a, act).max(hot_k(a, xact));
-        g.fill_rrect(rect, 12.0, Color::white((if selected { 0.17 } else { 0.055 + 0.075 * k }) * ca));
-        if selected { g.stroke_rrect(rect, 12.0, Color::white(0.34 * ca), 0.9); }
+        g.fill_rrect(
+            rect,
+            12.0,
+            Color::white((if selected { 0.17 } else { 0.055 + 0.075 * k }) * ca),
+        );
+        if selected {
+            g.stroke_rrect(rect, 12.0, Color::white(0.34 * ca), 0.9);
+        }
         let ic = Rect::new(rect.x + 5.0, rect.y + 3.0, rect.w - 10.0, 34.0);
-        let name = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.clone());
-        let is_image = std::path::Path::new(path).extension().and_then(|e| e.to_str())
-            .is_some_and(|e| ["png", "jpg", "jpeg", "bmp", "gif", "webp"].iter().any(|x| e.eq_ignore_ascii_case(x)));
+        let name = std::path::Path::new(path)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.clone());
+        let is_image = std::path::Path::new(path)
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| {
+                ["png", "jpg", "jpeg", "bmp", "gif", "webp"]
+                    .iter()
+                    .any(|x| e.eq_ignore_ascii_case(x))
+            });
         match a.shelf_icons.get(i).and_then(|b| b.as_ref()) {
             Some(bmp) if is_image => {
                 let sz = unsafe { bmp.GetSize() };
-                let ratio = if sz.height > 0.0 { sz.width / sz.height } else { 1.0 };
-                let (bw, bh) = if ratio > ic.w / ic.h { (ic.w, ic.w / ratio) } else { (ic.h * ratio, ic.h) };
+                let ratio = if sz.height > 0.0 {
+                    sz.width / sz.height
+                } else {
+                    1.0
+                };
+                let (bw, bh) = if ratio > ic.w / ic.h {
+                    (ic.w, ic.w / ratio)
+                } else {
+                    (ic.h * ratio, ic.h)
+                };
                 g.fill_rrect(ic, 7.0, Color::white(0.045 * ca));
-                g.draw_bitmap(bmp, Rect::new(ic.cx() - bw / 2.0, ic.cy() - bh / 2.0, bw, bh), 5.0, ca);
+                g.draw_bitmap(
+                    bmp,
+                    Rect::new(ic.cx() - bw / 2.0, ic.cy() - bh / 2.0, bw, bh),
+                    5.0,
+                    ca,
+                );
             }
-            Some(bmp) => g.draw_bitmap(bmp, Rect::new(rect.cx() - 13.0, rect.y + 6.0, 26.0, 26.0), 0.0, ca),
-            None => g.icon('\u{E8A5}', Rect::new(rect.cx() - 13.0, rect.y + 6.0, 26.0, 26.0), &f.icon14, T2.fade(ca)),
+            Some(bmp) => g.draw_bitmap(
+                bmp,
+                Rect::new(rect.cx() - 13.0, rect.y + 6.0, 26.0, 26.0),
+                0.0,
+                ca,
+            ),
+            None => g.icon(
+                '\u{E8A5}',
+                Rect::new(rect.cx() - 13.0, rect.y + 6.0, 26.0, 26.0),
+                &f.icon14,
+                T2.fade(ca),
+            ),
         }
-        g.text(&name, Rect::new(rect.x + 4.0, rect.y + 36.0, rect.w - 8.0, 14.0), &f.tiny, T2.fade(ca), Align::Center);
+        g.text(
+            &name,
+            Rect::new(rect.x + 4.0, rect.y + 36.0, rect.w - 8.0, 14.0),
+            &f.tiny,
+            T2.fade(ca),
+            Align::Center,
+        );
         if over {
             g.fill_circle(x.cx(), x.cy(), 8.5, Color(0.0, 0.0, 0.0, 0.75 * ca));
-            g.icon('\u{E711}', x, &f.icon14, (if hot(a, xact) { Color(1.0, 0.5, 0.5, 1.0) } else { T1 }).fade(ca));
+            g.icon(
+                '\u{E711}',
+                x,
+                &f.icon14,
+                (if hot(a, xact) {
+                    Color(1.0, 0.5, 0.5, 1.0)
+                } else {
+                    T1
+                })
+                .fade(ca),
+            );
         }
     }
     let pane = Rect::new(381.0, 5.0, 198.0, 169.0);
     g.fill_rrect(pane, 16.0, Color::white(0.065 * ca));
     if a.shelf_preview_path.is_empty() || !a.shelf.iter().any(|p| *p == a.shelf_preview_path) {
-        g.icon('\u{E890}', Rect::new(462.0, 54.0, 34.0, 34.0), &f.icon22, T3.fade(ca));
-        g.text("Select a file to preview", Rect::new(392.0, 94.0, 176.0, 33.0), &f.small, T2.fade(ca), Align::Center);
+        g.icon(
+            '\u{E890}',
+            Rect::new(462.0, 54.0, 34.0, 34.0),
+            &f.icon22,
+            T3.fade(ca),
+        );
+        g.text(
+            "Select a file to preview",
+            Rect::new(392.0, 94.0, 176.0, 33.0),
+            &f.small,
+            T2.fade(ca),
+            Align::Center,
+        );
     } else {
-        let filename = std::path::Path::new(&a.shelf_preview_path).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        g.text(&filename, Rect::new(393.0, 11.0, 174.0, 18.0), &f.small, T1.fade(ca), Align::Center);
+        let filename = std::path::Path::new(&a.shelf_preview_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        g.text(
+            &filename,
+            Rect::new(393.0, 11.0, 174.0, 18.0),
+            &f.small,
+            T1.fade(ca),
+            Align::Center,
+        );
         let image = Rect::new(393.0, 34.0, 174.0, 89.0);
         if let Some(ref bmp) = a.shelf_preview_bitmap {
             let size = unsafe { bmp.GetSize() };
-            let ratio = if size.height > 0.0 { size.width / size.height } else { 1.0 };
-            let (bw, bh) = if ratio > image.w / image.h { (image.w, image.w / ratio) } else { (image.h * ratio, image.h) };
-            g.draw_bitmap(bmp, Rect::new(image.cx() - bw / 2.0, image.cy() - bh / 2.0, bw, bh), 8.0, ca);
+            let ratio = if size.height > 0.0 {
+                size.width / size.height
+            } else {
+                1.0
+            };
+            let (bw, bh) = if ratio > image.w / image.h {
+                (image.w, image.w / ratio)
+            } else {
+                (image.h * ratio, image.h)
+            };
+            g.draw_bitmap(
+                bmp,
+                Rect::new(image.cx() - bw / 2.0, image.cy() - bh / 2.0, bw, bh),
+                8.0,
+                ca,
+            );
         } else if !a.shelf_preview_text.is_empty() {
             for (j, line) in a.shelf_preview_text.iter().take(5).enumerate() {
-                g.text(line, Rect::new(400.0, 35.0 + j as f32 * 17.0, 160.0, 17.0), &f.tiny, T2.fade(ca), Align::Left);
+                g.text(
+                    line,
+                    Rect::new(400.0, 35.0 + j as f32 * 17.0, 160.0, 17.0),
+                    &f.tiny,
+                    T2.fade(ca),
+                    Align::Left,
+                );
             }
         } else {
-            g.icon('\u{E8A5}', Rect::new(462.0, 60.0, 32.0, 32.0), &f.icon22, T2.fade(ca));
+            g.icon(
+                '\u{E8A5}',
+                Rect::new(462.0, 60.0, 32.0, 32.0),
+                &f.icon22,
+                T2.fade(ca),
+            );
         }
-        g.text(&a.shelf_preview_info, Rect::new(393.0, 122.0, 174.0, 17.0), &f.tiny, T3.fade(ca), Align::Center);
-        for (j, (act, label)) in [(Act::ShelfPreviewOpen, "Open"), (Act::ShelfPreviewReveal, "Reveal"), (Act::ShelfPreviewCopyPath, "Path")].iter().enumerate() {
+        g.text(
+            &a.shelf_preview_info,
+            Rect::new(393.0, 122.0, 174.0, 17.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Center,
+        );
+        for (j, (act, label)) in [
+            (Act::ShelfPreviewOpen, "Open"),
+            (Act::ShelfPreviewReveal, "Reveal"),
+            (Act::ShelfPreviewCopyPath, "Path"),
+        ]
+        .iter()
+        .enumerate()
+        {
             let button = Rect::new(392.0 + j as f32 * 59.0, 143.0, 56.0, 24.0);
-            hits.push(Hit { r: button, act: *act });
-            g.fill_rrect(button, 10.0, (if hot(a, *act) { HOVER } else { SURF }).fade(ca));
+            hits.push(Hit {
+                r: button,
+                act: *act,
+            });
+            g.fill_rrect(
+                button,
+                10.0,
+                (if hot(a, *act) { HOVER } else { SURF }).fade(ca),
+            );
             g.text(label, button, &f.tiny, T1.fade(ca), Align::Center);
         }
     }
     let status = crate::shelf::archive_status();
     if !status.label.is_empty() {
         let label = if status.busy && status.total_bytes > 0 {
-            format!("{}  {}%", status.label, status.done_bytes.saturating_mul(100) / status.total_bytes)
-        } else { status.label };
-        g.text(&label, Rect::new(183.0, 190.0, 310.0, 18.0), &f.tiny,
-            (if status.busy { a.accent } else { T3 }).fade(ca), Align::Center);
+            format!(
+                "{}  {}%",
+                status.label,
+                status.done_bytes.saturating_mul(100) / status.total_bytes
+            )
+        } else {
+            status.label
+        };
+        g.text(
+            &label,
+            Rect::new(183.0, 190.0, 310.0, 18.0),
+            &f.tiny,
+            (if status.busy { a.accent } else { T3 }).fade(ca),
+            Align::Center,
+        );
     }
     let clear = Rect::new(EXP_W - 24.0 - 78.0, 190.0, 78.0, 18.0);
-    hits.push(Hit { r: clear, act: Act::ShelfClear });
-    g.text("Clear all", clear, &f.tiny, (if hot(a, Act::ShelfClear) { T1 } else { T3 }).fade(ca), Align::Right);
+    hits.push(Hit {
+        r: clear,
+        act: Act::ShelfClear,
+    });
+    g.text(
+        "Clear all",
+        clear,
+        &f.tiny,
+        (if hot(a, Act::ShelfClear) { T1 } else { T3 }).fade(ca),
+        Align::Right,
+    );
     let paste = Rect::new(18.0, 188.0, 158.0, 22.0);
-    hits.push(Hit { r: paste, act: Act::ShelfPaste });
-    g.text("+ Paste copied files", paste, &f.tiny, (if hot(a, Act::ShelfPaste) { a.accent } else { T2 }).fade(ca), Align::Left);
+    hits.push(Hit {
+        r: paste,
+        act: Act::ShelfPaste,
+    });
+    g.text(
+        "+ Paste copied files",
+        paste,
+        &f.tiny,
+        (if hot(a, Act::ShelfPaste) {
+            a.accent
+        } else {
+            T2
+        })
+        .fade(ca),
+        Align::Left,
+    );
 }
 
 fn page_shelf_preview(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let f = &g.fonts;
     let name = std::path::Path::new(&a.shelf_preview_path)
-        .file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    g.text(&name, Rect::new(22.0, 0.0, EXP_W - 44.0, 25.0), &f.body, T1.fade(ca), Align::Center);
-    g.text(&a.shelf_preview_info, Rect::new(22.0, 25.0, EXP_W - 44.0, 18.0), &f.tiny, T3.fade(ca), Align::Center);
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    g.text(
+        &name,
+        Rect::new(22.0, 0.0, EXP_W - 44.0, 25.0),
+        &f.body,
+        T1.fade(ca),
+        Align::Center,
+    );
+    g.text(
+        &a.shelf_preview_info,
+        Rect::new(22.0, 25.0, EXP_W - 44.0, 18.0),
+        &f.tiny,
+        T3.fade(ca),
+        Align::Center,
+    );
 
     let preview = Rect::new(30.0, 46.0, EXP_W - 60.0, 111.0);
     g.fill_rrect(preview, 12.0, SURF.fade(ca));
     if let Some(ref bitmap) = a.shelf_preview_bitmap {
         let size = unsafe { bitmap.GetSize() };
-        let ratio = if size.height > 0.0 { size.width / size.height } else { 1.0 };
-        let (w, h) = if ratio >= 270.0 / 107.0 { (270.0, 270.0 / ratio) }
-            else { (107.0 * ratio, 107.0) };
+        let ratio = if size.height > 0.0 {
+            size.width / size.height
+        } else {
+            1.0
+        };
+        let (w, h) = if ratio >= 270.0 / 107.0 {
+            (270.0, 270.0 / ratio)
+        } else {
+            (107.0 * ratio, 107.0)
+        };
         let r = Rect::new(preview.cx() - w / 2.0, preview.cy() - h / 2.0, w, h);
         g.draw_bitmap(bitmap, r, 9.0, ca);
     } else if !a.shelf_preview_text.is_empty() {
         for (i, line) in a.shelf_preview_text.iter().take(6).enumerate() {
-            g.text(line, Rect::new(preview.x + 12.0, preview.y + 6.0 + i as f32 * 17.0,
-                preview.w - 24.0, 16.0), &f.tiny, T2.fade(ca), Align::Left);
+            g.text(
+                line,
+                Rect::new(
+                    preview.x + 12.0,
+                    preview.y + 6.0 + i as f32 * 17.0,
+                    preview.w - 24.0,
+                    16.0,
+                ),
+                &f.tiny,
+                T2.fade(ca),
+                Align::Left,
+            );
         }
     } else {
-        g.icon('\u{E8A5}', Rect::new(preview.cx() - 19.0, preview.y + 21.0, 38.0, 38.0), &f.icon22, a.accent.fade(ca));
-        g.text("No inline preview. Open in the original app.",
+        g.icon(
+            '\u{E8A5}',
+            Rect::new(preview.cx() - 19.0, preview.y + 21.0, 38.0, 38.0),
+            &f.icon22,
+            a.accent.fade(ca),
+        );
+        g.text(
+            "No inline preview. Open in the original app.",
             Rect::new(preview.x + 12.0, preview.y + 70.0, preview.w - 24.0, 23.0),
-            &f.small, T3.fade(ca), Align::Center);
+            &f.small,
+            T3.fade(ca),
+            Align::Center,
+        );
     }
 
     let buttons = [
@@ -2404,7 +5390,16 @@ fn page_shelf_preview(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     for (i, (act, label)) in buttons.iter().enumerate() {
         let r = Rect::new(46.0 + i as f32 * 172.0, 170.0, 161.0, 31.0);
         hits.push(Hit { r, act: *act });
-        g.fill_rrect(r, 10.0, (if hot(a, *act) { a.accent.fade(0.35) } else { HOVER }).fade(ca));
+        g.fill_rrect(
+            r,
+            10.0,
+            (if hot(a, *act) {
+                a.accent.fade(0.35)
+            } else {
+                HOVER
+            })
+            .fade(ca),
+        );
         g.text(label, r, &f.small, T1.fade(ca), Align::Center);
     }
 }
@@ -2412,12 +5407,36 @@ fn page_shelf_preview(a: &App, ca: f32, hits: &mut Vec<Hit>) {
 fn page_app_picker(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let f = &g.fonts;
-    g.text("Add an app", Rect::new(28.0, 4.0, 160.0, 26.0), &f.body, T1.fade(ca), Align::Left);
+    g.text(
+        "Add an app",
+        Rect::new(28.0, 4.0, 160.0, 26.0),
+        &f.body,
+        T1.fade(ca),
+        Align::Left,
+    );
     // search chip (click, then type) and Done
     let done = Rect::new(EXP_W - 24.0 - 76.0, 4.0, 76.0, 26.0);
-    hits.push(Hit { r: done, act: Act::AppDone });
-    g.fill_rrect(done, 13.0, (if hot(a, Act::AppDone) { Color::white(1.0) } else { Color::white(0.92) }).fade(ca));
-    g.text("Done", done, &f.small, Color(0.0, 0.0, 0.0, ca), Align::Center);
+    hits.push(Hit {
+        r: done,
+        act: Act::AppDone,
+    });
+    g.fill_rrect(
+        done,
+        13.0,
+        (if hot(a, Act::AppDone) {
+            Color::white(1.0)
+        } else {
+            Color::white(0.92)
+        })
+        .fade(ca),
+    );
+    g.text(
+        "Done",
+        done,
+        &f.small,
+        Color(0.0, 0.0, 0.0, ca),
+        Align::Center,
+    );
     let sr = Rect::new(done.x - 12.0 - 210.0, 4.0, 210.0, 26.0);
     let typing = a.entry_search;
     if typing || !a.app_filter.is_empty() {
@@ -2426,41 +5445,114 @@ fn page_app_picker(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             t.push('\u{2502}');
         }
         g.fill_rrect(sr, 13.0, Color::white(0.14 * ca));
-        g.text(&t, Rect::new(sr.x + 12.0, sr.y, sr.w - 16.0, sr.h), &f.small, T1.fade(ca), Align::Left);
+        g.text(
+            &t,
+            Rect::new(sr.x + 12.0, sr.y, sr.w - 16.0, sr.h),
+            &f.small,
+            T1.fade(ca),
+            Align::Left,
+        );
     } else {
-        g.fill_rrect(sr, 13.0, Color::white((if hot(a, Act::AppSearch) { 0.12 } else { 0.07 }) * ca));
-        g.icon('\u{E721}', Rect::new(sr.x + 6.0, sr.y, 24.0, sr.h), &f.icon14, T3.fade(ca));
-        g.text("Search apps", Rect::new(sr.x + 34.0, sr.y, sr.w - 40.0, sr.h), &f.small, T3.fade(ca), Align::Left);
+        g.fill_rrect(
+            sr,
+            13.0,
+            Color::white((if hot(a, Act::AppSearch) { 0.12 } else { 0.07 }) * ca),
+        );
+        g.icon(
+            '\u{E721}',
+            Rect::new(sr.x + 6.0, sr.y, 24.0, sr.h),
+            &f.icon14,
+            T3.fade(ca),
+        );
+        g.text(
+            "Search apps",
+            Rect::new(sr.x + 34.0, sr.y, sr.w - 40.0, sr.h),
+            &f.small,
+            T3.fade(ca),
+            Align::Left,
+        );
     }
-    hits.push(Hit { r: sr, act: Act::AppSearch });
+    hits.push(Hit {
+        r: sr,
+        act: Act::AppSearch,
+    });
     let rf = Rect::new(sr.x - 36.0, 4.0, 26.0, 26.0);
-    hits.push(Hit { r: rf, act: Act::AppRefresh });
-    g.fill_rrect(rf, 13.0, Color::white((if hot(a, Act::AppRefresh) { 0.14 } else { 0.07 }) * ca));
+    hits.push(Hit {
+        r: rf,
+        act: Act::AppRefresh,
+    });
+    g.fill_rrect(
+        rf,
+        13.0,
+        Color::white((if hot(a, Act::AppRefresh) { 0.14 } else { 0.07 }) * ca),
+    );
     let deg = if a.app_loading { a.spin_t * 360.0 } else { 0.0 };
-    g.rotated(rf.cx(), rf.cy(), deg, || g.icon('\u{E72C}', rf, &f.icon14, (if a.app_loading { a.accent } else { T2 }).fade(ca)));
+    g.rotated(rf.cx(), rf.cy(), deg, || {
+        g.icon(
+            '\u{E72C}',
+            rf,
+            &f.icon14,
+            (if a.app_loading { a.accent } else { T2 }).fade(ca),
+        )
+    });
     if a.app_loading && a.app_list.is_some() {
-        g.text("Updating\u{2026}", Rect::new(130.0, 4.0, 100.0, 26.0), &f.tiny, T3.fade(ca), Align::Left);
+        g.text(
+            "Updating\u{2026}",
+            Rect::new(130.0, 4.0, 100.0, 26.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
     }
 
     let list = Rect::new(24.0, 40.0, EXP_W - 48.0, PICK_ROWS as f32 * 32.0);
     let Some(_) = &a.app_list else {
         // still asking Windows for the list; after 15 s offer to try again
         if a.app_load_t0.is_some_and(|t| t.elapsed().as_secs() >= 15) {
-            g.text("Windows is taking longer than usual to list your apps.", Rect::new(0.0, 84.0, EXP_W, 24.0), &f.body, T2.fade(ca), Align::Center);
+            g.text(
+                "Windows is taking longer than usual to list your apps.",
+                Rect::new(0.0, 84.0, EXP_W, 24.0),
+                &f.body,
+                T2.fade(ca),
+                Align::Center,
+            );
             let r = Rect::new(EXP_W / 2.0 - 60.0, 120.0, 120.0, 32.0);
-            hits.push(Hit { r, act: Act::AppRetry });
-            g.fill_rrect(r, 16.0, Color::white((if hot(a, Act::AppRetry) { 1.0 } else { 0.92 }) * ca));
-            g.text("Try again", r, &f.small, Color(0.0, 0.0, 0.0, ca), Align::Center);
+            hits.push(Hit {
+                r,
+                act: Act::AppRetry,
+            });
+            g.fill_rrect(
+                r,
+                16.0,
+                Color::white((if hot(a, Act::AppRetry) { 1.0 } else { 0.92 }) * ca),
+            );
+            g.text(
+                "Try again",
+                r,
+                &f.small,
+                Color(0.0, 0.0, 0.0, ca),
+                Align::Center,
+            );
         } else {
             spinner(g, EXP_W / 2.0, 100.0, 16.0, a.spin_t, a.accent, ca);
-            g.text("Finding your apps\u{2026}", Rect::new(0.0, 126.0, EXP_W, 22.0), &f.small, T2.fade(ca), Align::Center);
+            g.text(
+                "Finding your apps\u{2026}",
+                Rect::new(0.0, 126.0, EXP_W, 22.0),
+                &f.small,
+                T2.fade(ca),
+                Align::Center,
+            );
         }
         return;
     };
     let view = a.app_view();
     if view.is_empty() {
         g.text(
-            if a.app_filter.is_empty() { "No apps found" } else { "No apps match that search" },
+            if a.app_filter.is_empty() {
+                "No apps found"
+            } else {
+                "No apps match that search"
+            },
             Rect::new(0.0, 90.0, EXP_W, 24.0),
             &f.body,
             T3.fade(ca),
@@ -2470,7 +5562,9 @@ fn page_app_picker(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     }
     for row in 0..PICK_ROWS {
         let idx = a.app_scroll + row;
-        let Some((name, id)) = view.get(idx) else { break };
+        let Some((name, id)) = view.get(idx) else {
+            break;
+        };
         let r = Rect::new(list.x, list.y + row as f32 * 32.0, list.w - 10.0, 28.0);
         let target = format!("shell:AppsFolder\\{id}");
         let pinned = a.apps.iter().any(|p| p.target == target);
@@ -2479,23 +5573,73 @@ fn page_app_picker(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             hits.push(Hit { r, act });
         }
         let on = hot(a, act) && !pinned;
-        g.fill_rrect(r, 10.0, Color::white((if on { 0.12 } else if row % 2 == 0 { 0.05 } else { 0.0 }) * ca));
+        g.fill_rrect(
+            r,
+            10.0,
+            Color::white(
+                (if on {
+                    0.12
+                } else if row % 2 == 0 {
+                    0.05
+                } else {
+                    0.0
+                }) * ca,
+            ),
+        );
         let ic = Rect::new(r.x + 10.0, r.y + 3.0, 22.0, 22.0);
-        match a.picker_icons.iter().find(|(k, _)| k == id).and_then(|(_, b)| b.as_ref()) {
+        match a
+            .picker_icons
+            .iter()
+            .find(|(k, _)| k == id)
+            .and_then(|(_, b)| b.as_ref())
+        {
             Some(bmp) => g.draw_bitmap(bmp, ic, 0.0, ca),
             None => {
                 g.fill_circle(ic.cx(), ic.cy(), 11.0, name_color(name).fade(ca));
-                let letter: String = name.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
-                g.text(&letter, ic, &f.tiny, Color(0.0, 0.0, 0.0, 0.75 * ca), Align::Center);
+                let letter: String = name
+                    .chars()
+                    .next()
+                    .map(|c| c.to_uppercase().collect())
+                    .unwrap_or_default();
+                g.text(
+                    &letter,
+                    ic,
+                    &f.tiny,
+                    Color(0.0, 0.0, 0.0, 0.75 * ca),
+                    Align::Center,
+                );
             }
         }
-        g.text(name, Rect::new(r.x + 44.0, r.y, r.w - 150.0, r.h), &f.body, (if pinned { T3 } else { T1 }).fade(ca), Align::Left);
-        let (label, col) = if pinned { ("\u{2713} Pinned", T3) } else if on { ("Pin to panel", a.accent) } else { ("", T3) };
-        g.text(label, Rect::new(r.x + r.w - 130.0, r.y, 120.0, r.h), &f.small, col.fade(ca), Align::Right);
+        g.text(
+            name,
+            Rect::new(r.x + 44.0, r.y, r.w - 150.0, r.h),
+            &f.body,
+            (if pinned { T3 } else { T1 }).fade(ca),
+            Align::Left,
+        );
+        let (label, col) = if pinned {
+            ("\u{2713} Pinned", T3)
+        } else if on {
+            ("Pin to panel", a.accent)
+        } else {
+            ("", T3)
+        };
+        g.text(
+            label,
+            Rect::new(r.x + r.w - 130.0, r.y, 120.0, r.h),
+            &f.small,
+            col.fade(ca),
+            Align::Right,
+        );
     }
     // a thin scroll bar when there is more than fits
     if view.len() > PICK_ROWS {
-        let track = Rect::new(list.x + list.w - 5.0, list.y, 3.0, PICK_ROWS as f32 * 32.0 - 4.0);
+        let track = Rect::new(
+            list.x + list.w - 5.0,
+            list.y,
+            3.0,
+            PICK_ROWS as f32 * 32.0 - 4.0,
+        );
         g.fill_rrect(track, 1.5, Color::white(0.08 * ca));
         let hgt = track.h * PICK_ROWS as f32 / view.len() as f32;
         let y = track.y + (track.h - hgt) * a.app_scroll as f32 / (view.len() - PICK_ROWS) as f32;
@@ -2510,7 +5654,11 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let f = &g.fonts;
 
     // ---- cards
-    for (r, c) in [(Rect::new(14.0, 2.0, 208.0, 198.0), C_FOC), (Rect::new(230.0, 2.0, 190.0, 198.0), C_BAT), (Rect::new(428.0, 2.0, 158.0, 198.0), C_UP)] {
+    for (r, c) in [
+        (Rect::new(14.0, 2.0, 208.0, 198.0), C_FOC),
+        (Rect::new(230.0, 2.0, 190.0, 198.0), C_BAT),
+        (Rect::new(428.0, 2.0, 158.0, 198.0), C_UP),
+    ] {
         g.fill_rrect(r, 20.0, Color::white(0.05 * ca));
         g.fill_rrect(r, 20.0, c.fade(0.07 * ca));
     }
@@ -2532,7 +5680,10 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         Align::Left,
     );
     g.text(
-        &format!("Today: {} min focus \u{00B7} {} done", a.focus_today, a.done_today),
+        &format!(
+            "Today: {} min focus \u{00B7} {} done",
+            a.focus_today, a.done_today
+        ),
         Rect::new(28.0, 176.0, 190.0, 16.0),
         &f.tiny,
         T3.fade(ca),
@@ -2592,8 +5743,20 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     }
     // custom length: type minutes
     let cr = Rect::new(28.0 + 4.0 * 38.0, 94.0, 34.0, 26.0);
-    hits.push(Hit { r: cr, act: Act::TimerCustom });
-    g.fill_rrect(cr, 13.0, (if hot(a, Act::TimerCustom) || a.entry_timer { HOVER } else { SURF }).fade(ca));
+    hits.push(Hit {
+        r: cr,
+        act: Act::TimerCustom,
+    });
+    g.fill_rrect(
+        cr,
+        13.0,
+        (if hot(a, Act::TimerCustom) || a.entry_timer {
+            HOVER
+        } else {
+            SURF
+        })
+        .fade(ca),
+    );
     g.icon('\u{E70F}', cr, &f.icon14, T2.fade(ca));
     let sb = Rect::new(28.0, 130.0, 108.0, 36.0);
     hits.push(Hit {
@@ -2641,7 +5804,10 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let del = Rect::new(tx + tw - 24.0, y, 24.0, 26.0);
         let fb = Rect::new(tx + tw - 50.0, y, 24.0, 26.0);
         if !t.done {
-            hits.push(Hit { r: fb, act: Act::TodoFocus(i) });
+            hits.push(Hit {
+                r: fb,
+                act: Act::TodoFocus(i),
+            });
         }
         hits.push(Hit {
             r: cb,
@@ -2651,7 +5817,8 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             r: del,
             act: Act::TodoDel(i),
         });
-        let over = hot(a, Act::TodoToggle(i)) || hot(a, Act::TodoDel(i)) || hot(a, Act::TodoFocus(i));
+        let over =
+            hot(a, Act::TodoToggle(i)) || hot(a, Act::TodoDel(i)) || hot(a, Act::TodoFocus(i));
         if over {
             g.fill_rrect(row, 9.0, Color::white(0.07 * ca));
         }
@@ -2666,14 +5833,23 @@ fn page_tasks(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             Align::Left,
         );
         if over {
-            g.fill_rrect(Rect::new(tx + tw - 52.0, y + 1.0, 52.0, 24.0), 8.0, Color(0.117, 0.117, 0.117, 1.0).fade(ca));
+            g.fill_rrect(
+                Rect::new(tx + tw - 52.0, y + 1.0, 52.0, 24.0),
+                8.0,
+                Color(0.117, 0.117, 0.117, 1.0).fade(ca),
+            );
         }
         if !t.done {
             g.icon(
                 '\u{E768}',
                 fb,
                 &f.icon14,
-                (if hot(a, Act::TodoFocus(i)) { a.accent } else { T3 }).fade(ca * if over { 1.0 } else { 0.0 }),
+                (if hot(a, Act::TodoFocus(i)) {
+                    a.accent
+                } else {
+                    T3
+                })
+                .fade(ca * if over { 1.0 } else { 0.0 }),
             );
         }
         g.icon(
@@ -2793,27 +5969,36 @@ pub(crate) use crate::cal::{days_in_month, first_of_month, first_weekday};
 
 // --------------------------------------------------------------- helpers ----
 
-/// A seek line with gentle rhythm. The shape is decorative; the colour split
-/// and handle use the media session's actual playback position.
+/// A restrained Apple Music-style timeline backed only by the media session's
+/// real position and duration.
 fn wave_seek(a: &App, r: Rect, frac: f32, ca: f32, hits: &mut Vec<Hit>, enabled: bool) {
     let g = &a.gfx;
     let progress = frac.clamp(0.0, 1.0);
-    let segments = 48;
-    let point = |i: usize| {
-        let t = i as f32 / segments as f32;
-        let amplitude = (t * 19.0).sin() * (t * 43.0).sin() * 3.1;
-        (r.x + r.w * t, r.cy() + amplitude)
-    };
-    for i in 0..segments {
-        let t = (i as f32 + 0.5) / segments as f32;
-        let color = if t <= progress { a.accent.fade(0.92 * ca) } else { Color::white(0.27 * ca) };
-        g.line(point(i), point(i + 1), 2.5, color);
+    let track = Rect::new(r.x, r.cy() - 1.5, r.w, 3.0);
+    g.fill_rrect(track, 1.5, Color::white(0.24 * ca));
+    if progress > 0.0 {
+        g.fill_rrect(
+            Rect::new(track.x, track.y, track.w * progress, track.h),
+            1.5,
+            a.accent.fade(0.96 * ca),
+        );
+    }
+    let knob_x = r.x + r.w * progress;
+    if enabled {
+        g.fill_circle(
+            knob_x,
+            r.cy(),
+            if hot(a, Act::Seek) || a.seek_frac.is_some() {
+                6.0
+            } else {
+                4.5
+            },
+            Color::white(ca),
+        );
+        g.fill_circle(knob_x, r.cy(), 1.8, a.accent.fade(ca));
     }
     if enabled {
         hits.push(Hit { r, act: Act::Seek });
-        if hot(a, Act::Seek) || a.seek_frac.is_some() {
-            g.fill_circle(r.x + r.w * progress, r.cy(), 5.5, Color::white(ca));
-        }
     }
 }
 

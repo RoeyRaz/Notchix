@@ -177,13 +177,16 @@ pub enum Act {
     Collapse,
     Pin,
     Tab(Page),
+    /// Home dashboard cards navigate independently from the top navigation
+    /// tabs so their hover feedback never cross-highlights a tab.
+    HomeLink(Page),
     Prev,
     PlayPause,
     Next,
     Seek,
     SpotifyVolume,
     SpotifyMute,
-    LyricsToggle,
+    LyricsPaneToggle,
     ProcessOpen,
     ProcessRefresh,
     ProcessSort,
@@ -444,8 +447,7 @@ pub struct App {
     osd_device: Option<String>,
     pub osd_level: Option<u32>,
     pub osd_muted: bool,
-    pub lyrics_view: bool,
-    pub lyrics_scroll: usize,
+    pub lyrics_enabled: bool,
     pub processes: Vec<sys::ProcessInfo>,
     proc_prev: std::collections::HashMap<u32, (u64, Instant)>,
     pub proc_sort_cpu: bool,
@@ -698,8 +700,7 @@ impl App {
             osd_device: None,
             osd_level: None,
             osd_muted: false,
-            lyrics_view: false,
-            lyrics_scroll: 0,
+            lyrics_enabled: !matches!(std::fs::read_to_string(store::data_dir().join("lyrics.txt")).ok().as_deref(), Some("0")),
             processes: Vec::new(),
             proc_prev: std::collections::HashMap::new(),
             proc_sort_cpu: false,
@@ -1293,7 +1294,6 @@ impl App {
         let need = !self.hidden
             && ((!self.expanded && self.cfg.day_line && self.mstate.playing && self.mstate.dur_ticks > 0)
                 || (self.expanded && self.mstate.playing)
-                || (self.expanded && self.page == Page::Media && self.lyrics_view)
                 || (self.expanded && self.page == Page::Typing && self.typing.started.is_some() && !self.typing.finished)
                 || self.timer_running());
         if need && !self.sec_on {
@@ -2246,9 +2246,6 @@ impl App {
         } else if self.page == Page::Assistant {
             self.assistant_scroll = if delta < 0 { self.assistant_scroll.saturating_add(2).min(100) } else { self.assistant_scroll.saturating_sub(2) };
             self.render();
-        } else if self.page == Page::Media && self.lyrics_view {
-            self.lyrics_scroll = if delta < 0 { self.lyrics_scroll.saturating_add(1).min(490) } else { self.lyrics_scroll.saturating_sub(1) };
-            self.render();
         } else if self.page == Page::Apps && self.picking {
             let max = self.app_view().len().saturating_sub(PICK_ROWS);
             self.app_scroll = if delta < 0 { (self.app_scroll + 1).min(max) } else { self.app_scroll.saturating_sub(1) };
@@ -2397,6 +2394,7 @@ impl App {
             }
             Act::Pin => self.pinned = !self.pinned,
             Act::Tab(p) => self.select_page(p),
+            Act::HomeLink(p) => self.select_page(p),
             Act::SubpageBack => self.select_page(match self.page {
                 Page::Processes => Page::Stats,
                 Page::ShelfPreview => Page::Shelf,
@@ -2552,13 +2550,9 @@ impl App {
                     if sys::set_spotify_volume(next) { self.spotify_vol = Some(next); }
                 }
             }
-            Act::LyricsToggle => {
-                self.lyrics_view = !self.lyrics_view;
-                self.lyrics_scroll = 0;
-                if self.lyrics_view {
-                    crate::lyrics::request(&self.mstate.title, &self.mstate.artist);
-                }
-                self.sync_timers();
+            Act::LyricsPaneToggle => {
+                self.lyrics_enabled = !self.lyrics_enabled;
+                let _ = std::fs::write(store::data_dir().join("lyrics.txt"), if self.lyrics_enabled { "1" } else { "0" });
                 self.render();
             }
             Act::Prev => {
@@ -3323,7 +3317,6 @@ impl App {
         let started = st.playing && !self.mstate.playing;
         self.mstate = st;
         if track_changed && self.expanded && self.page == Page::Media {
-            self.lyrics_scroll = 0;
             crate::lyrics::request(&self.mstate.title, &self.mstate.artist);
         }
         if self.skip_done() {
