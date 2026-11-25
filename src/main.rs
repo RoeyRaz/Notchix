@@ -7,6 +7,8 @@ mod glass_capture;
 #[cfg(windows)]
 mod notion;
 #[cfg(windows)]
+mod spotify;
+#[cfg(windows)]
 mod bar;
 #[cfg(windows)]
 mod dock;

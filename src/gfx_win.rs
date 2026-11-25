@@ -544,13 +544,13 @@ fn make_fonts(dw: &IDWriteFactory) -> Result<Fonts> {
                 }
                 Ok(f)
             };
-        let ui = w!("Segoe UI");
+        let ui = if font_exists(dw, w!("Segoe UI Variable")) { w!("Segoe UI Variable") } else { w!("Segoe UI") };
         Ok(Fonts {
-            title: text(ui, DWRITE_FONT_WEIGHT_SEMI_BOLD, 17.0)?,
-            body: text(ui, DWRITE_FONT_WEIGHT_NORMAL, 14.0)?,
-            small: text(ui, DWRITE_FONT_WEIGHT_NORMAL, 12.0)?,
-            menu: text(ui, DWRITE_FONT_WEIGHT_SEMI_BOLD, 13.0)?,
-            tiny: text(ui, DWRITE_FONT_WEIGHT_NORMAL, 11.0)?,
+            title: text(ui, DWRITE_FONT_WEIGHT_SEMI_BOLD, 18.0)?,
+            body: text(ui, DWRITE_FONT_WEIGHT_MEDIUM, 15.0)?,
+            small: text(ui, DWRITE_FONT_WEIGHT_MEDIUM, 13.0)?,
+            menu: text(ui, DWRITE_FONT_WEIGHT_SEMI_BOLD, 14.0)?,
+            tiny: text(ui, DWRITE_FONT_WEIGHT_MEDIUM, 11.0)?,
             big: text(ui, DWRITE_FONT_WEIGHT_LIGHT, 34.0)?,
             icon14: text(icon_family, DWRITE_FONT_WEIGHT_NORMAL, 14.0)?,
             icon18: text(icon_family, DWRITE_FONT_WEIGHT_NORMAL, 18.0)?,

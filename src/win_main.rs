@@ -369,6 +369,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         m if m == app::WM_FRAME => a.on_frame(),
         m if m == cal::WM_CALENDAR_READY => a.on_calendar_ready(),
         m if m == app::WM_ASSISTANT_DONE => a.on_assistant_done(),
+        m if m == app::WM_SPOTIFY_DONE => a.on_spotify_done(),
         m if m == glass_capture::WM_GLASS_FRAME => a.on_glass_frame(),
         m if m == media::WM_MEDIA => a.on_media(),
         m if m == radio::WM_RADIO => a.on_radio(),

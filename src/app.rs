@@ -52,6 +52,7 @@ pub const CLIP_ROWS: usize = 5;
 /// Posted once per display refresh while something animates (see `pump`).
 pub const WM_FRAME: u32 = 0x8000 + 12; // WM_APP + 12
 pub const WM_ASSISTANT_DONE: u32 = 0x8000 + 41;
+pub const WM_SPOTIFY_DONE: u32 = 0x8000 + 44;
 /// Posted by the background Windows notification listener when new items arrive.
 pub const WM_NATIVE_NOTICE: u32 = 0x8000 + 24;
 
@@ -203,6 +204,13 @@ pub enum Act {
     AssistantOpen,
     AssistantAsk,
     AssistantNotion,
+    SpotifyClientId,
+    SpotifyConnect,
+    SpotifySearchInput,
+    SpotifySearch,
+    SpotifyQueue(usize),
+    SpotifyDisconnect,
+    DockToggle,
     ActivityRequestAccess,
     ActivityTestPreview,
     ActivityPrivacyToggle,
@@ -517,6 +525,14 @@ pub struct App {
     pub assistant_busy: bool,
     pub assistant_scroll: usize,
     assistant_result: Arc<std::sync::Mutex<Option<std::result::Result<String, String>>>>,
+    pub spotify_client_id: String,
+    pub spotify_query: String,
+    pub spotify_tracks: Vec<crate::spotify::Track>,
+    pub spotify_status: String,
+    pub spotify_busy: bool,
+    pub(crate) spotify_client_id_entry: bool,
+    pub(crate) spotify_query_entry: bool,
+    spotify_result: Arc<std::sync::Mutex<Option<crate::spotify::Result>>>,
     /// the text being typed is a timer length in minutes, not a task
     pub entry_timer: bool,
     /// the notch was opened by the quick-add hotkey, so close it again afterwards
@@ -718,10 +734,18 @@ impl App {
             entry_search: false,
             assistant_entry: false,
             assistant_question: String::new(),
-            assistant_answer: "Write a task in Hebrew or English, then save it to Notion.".into(),
+            assistant_answer: String::new(),
             assistant_busy: false,
             assistant_scroll: 0,
             assistant_result: Arc::new(std::sync::Mutex::new(None)),
+            spotify_client_id: crate::spotify::client_id(),
+            spotify_query: String::new(),
+            spotify_tracks: Vec::new(),
+            spotify_status: if crate::spotify::connected() { "Search Spotify and add a track to your queue.".into() } else { "Connect Spotify once to add songs to your queue.".into() },
+            spotify_busy: false,
+            spotify_client_id_entry: false,
+            spotify_query_entry: false,
+            spotify_result: Arc::new(std::sync::Mutex::new(None)),
             clip_scroll: 0,
             cal_off: 0,
             ignore_clip: None,
@@ -2395,6 +2419,7 @@ impl App {
                 if self.quiet_alerts { self.pending_previews.clear(); self.system_preview = None; }
             },
             Act::GlassToggle => self.toggle_glass(),
+            Act::DockToggle => self.toggle_dock(),
             Act::AssistantOpen => self.select_page(Page::Assistant),
             Act::AssistantAsk => {
                 self.start_entry();
@@ -2414,6 +2439,49 @@ impl App {
                     });
                 }
             },
+            Act::SpotifyClientId => {
+                self.start_entry();
+                self.spotify_client_id_entry = true;
+                self.entering = Some(self.spotify_client_id.encode_utf16().collect());
+                self.spotify_status = "Paste the Client ID, then press Enter to save.".into();
+            }
+            Act::SpotifyConnect => {
+                if self.spotify_client_id.trim().is_empty() {
+                    self.spotify_status = "Enter your Spotify Client ID first.".into();
+                } else if !self.spotify_busy {
+                    self.spotify_busy = true;
+                    self.spotify_status = "Waiting for Spotify sign-in in your browser…".into();
+                    let client_id = self.spotify_client_id.clone();
+                    self.spawn_spotify_request(move || crate::spotify::Result::Connected(crate::spotify::authorize(&client_id)));
+                }
+            }
+            Act::SpotifySearchInput => {
+                self.start_entry();
+                self.spotify_query_entry = true;
+                self.entering = Some(self.spotify_query.encode_utf16().collect());
+                self.spotify_status = "Type a song or artist, then press Enter to search.".into();
+            }
+            Act::SpotifySearch => {
+                if self.spotify_query.trim().is_empty() { self.spotify_status = "Type a song, artist, or album to search.".into(); }
+                else { self.start_spotify_search(); }
+            }
+            Act::SpotifyQueue(index) => {
+                if let Some(track) = self.spotify_tracks.get(index) {
+                    let client_id = self.spotify_client_id.clone();
+                    let uri = track.uri.clone();
+                    let title = track.title.clone();
+                    if !self.spotify_busy {
+                        self.spotify_busy = true;
+                        self.spotify_status = format!("Adding {title} to your queue…");
+                        self.spawn_spotify_request(move || crate::spotify::Result::Queued(crate::spotify::queue(&client_id, &uri)));
+                    }
+                }
+            }
+            Act::SpotifyDisconnect => {
+                crate::spotify::disconnect();
+                self.spotify_tracks.clear();
+                self.spotify_status = "Spotify disconnected from Notchix.".into();
+            }
             Act::ActivityRequestAccess => self.windows_listener.request(),
             Act::ActivityTestPreview => {
                 let sample = crate::win_notifications::Notice { app: "Notchix Demo".into(), title: "The island is ready".into(), body: "Your notifications will animate here".into(), received: Instant::now(), historical: false };
@@ -2916,6 +2984,8 @@ impl App {
         self.entry_timer = false;
         self.entry_search = false;
         self.assistant_entry = false;
+        self.spotify_client_id_entry = false;
+        self.spotify_query_entry = false;
         unsafe {
             self.prev_fg = GetForegroundWindow();
         }
@@ -2937,6 +3007,8 @@ impl App {
         let timer = std::mem::take(&mut self.entry_timer);
         let search = std::mem::take(&mut self.entry_search);
         let assistant = std::mem::take(&mut self.assistant_entry);
+        let spotify_client_id_entry = std::mem::take(&mut self.spotify_client_id_entry);
+        let spotify_query_entry = std::mem::take(&mut self.spotify_query_entry);
         if search && !commit {
             // Esc drops the filter; Enter keeps it
             if self.page == Page::Apps {
@@ -2954,6 +3026,21 @@ impl App {
                 self.timer_left_ms = mins as i64 * 60_000;
                 self.timer_start = Some(Instant::now());
                 self.after_timer_change();
+            }
+        } else if commit && spotify_client_id_entry {
+            let client_id = String::from_utf16_lossy(&buf).trim().to_string();
+            let valid = (20..=100).contains(&client_id.len()) && client_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+            if valid && crate::spotify::save_client_id(&client_id).is_ok() {
+                self.spotify_client_id = client_id;
+                self.spotify_status = "Client ID saved. Connect your Spotify account to continue.".into();
+            } else {
+                self.spotify_status = "That Client ID looks invalid. Paste the ID from your Spotify Developer app.".into();
+            }
+        } else if commit && spotify_query_entry {
+            let query = String::from_utf16_lossy(&buf).trim().to_string();
+            if !query.is_empty() {
+                self.spotify_query = query;
+                self.start_spotify_search();
             }
         } else if commit && assistant {
             let prompt = String::from_utf16_lossy(&buf).trim().to_string();
@@ -2990,6 +3077,51 @@ impl App {
                 self.assistant_busy = false;
                 self.assistant_scroll = 0;
             }
+        }
+        self.render();
+    }
+
+    fn spawn_spotify_request(&self, task: impl FnOnce() -> crate::spotify::Result + Send + 'static) {
+        let result = self.spotify_result.clone();
+        let hwnd = self.hwnd.0 as isize;
+        std::thread::spawn(move || {
+            let value = task();
+            if let Ok(mut slot) = result.lock() { *slot = Some(value); }
+            unsafe { let _ = PostMessageW(Some(HWND(hwnd as *mut _)), WM_SPOTIFY_DONE, WPARAM(0), LPARAM(0)); }
+        });
+    }
+
+    fn start_spotify_search(&mut self) {
+        if self.spotify_client_id.is_empty() {
+            self.spotify_status = "Add your Spotify Developer Client ID first.".into();
+        } else if !crate::spotify::connected() {
+            self.spotify_status = "Connect your Spotify account first.".into();
+        } else if !self.spotify_busy && !self.spotify_query.trim().is_empty() {
+            self.spotify_busy = true;
+            self.spotify_status = "Searching Spotify…".into();
+            let client_id = self.spotify_client_id.clone();
+            let query = self.spotify_query.clone();
+            self.spawn_spotify_request(move || crate::spotify::Result::Search(crate::spotify::search(&client_id, &query)));
+        }
+    }
+
+    pub fn on_spotify_done(&mut self) {
+        let result = self.spotify_result.lock().ok().and_then(|mut slot| slot.take());
+        self.spotify_busy = false;
+        match result {
+            Some(crate::spotify::Result::Connected(Ok(()))) => self.spotify_status = "Spotify connected. Search for a track to queue.".into(),
+            Some(crate::spotify::Result::Connected(Err(message))) => self.spotify_status = message,
+            Some(crate::spotify::Result::Search(Ok(tracks))) => {
+                self.spotify_status = if tracks.is_empty() { "No matching tracks found.".into() } else { format!("{} tracks found · select one to add it next", tracks.len()) };
+                self.spotify_tracks = tracks;
+            }
+            Some(crate::spotify::Result::Search(Err(message))) => {
+                self.spotify_tracks.clear();
+                self.spotify_status = message;
+            }
+            Some(crate::spotify::Result::Queued(Ok(()))) => self.spotify_status = "Added to your Spotify queue.".into(),
+            Some(crate::spotify::Result::Queued(Err(message))) => self.spotify_status = message,
+            None => self.spotify_status = "Spotify did not return a result. Try again.".into(),
         }
         self.render();
     }

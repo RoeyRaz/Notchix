@@ -56,10 +56,10 @@ fn make_fonts() -> Result<Fonts> {
     .ok_or("no UI font found")?;
     let f = |size: f32| Font { face: ui.clone(), size };
     Ok(Fonts {
-        title: f(17.0),
-        body: f(14.0),
-        small: f(12.0),
-        menu: f(13.0),
+        title: f(18.0),
+        body: f(15.0),
+        small: f(13.0),
+        menu: f(14.0),
         tiny: f(11.0),
         big: f(34.0),
         // ponytail: icons share the UI font until a Linux icon font is chosen

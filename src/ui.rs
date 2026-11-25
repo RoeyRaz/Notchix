@@ -18,10 +18,22 @@ const HOVER: Color = Color::white(0.145);
 
 // Neutral material; album art colours text and controls, not the surfaces.
 fn glass_card(a: &App, r: Rect, radius: f32, ca: f32, hovered: bool) {
+    glass_card_k(a, r, radius, ca, if hovered { 1.0 } else { 0.0 }, a.accent);
+}
+
+fn glass_card_k(a: &App, r: Rect, radius: f32, ca: f32, hover: f32, tint: Color) {
     let g = &a.gfx;
-    g.fill_rrect(r, radius, Color(0.12, 0.13, 0.15, (if hovered { 0.58 } else { 0.46 }) * ca));
-    g.fill_rrect(r, radius, Color::white((if hovered { 0.075 } else { 0.035 }) * ca));
-    g.stroke_rrect(r, radius, Color(0.0, 0.0, 0.0, 0.16 * ca), 0.8);
+    let k = hover.clamp(0.0, 1.0);
+    g.fill_rrect(r, radius, Color(0.12, 0.13, 0.15, (0.46 + 0.10 * k) * ca));
+    if k > 0.001 { g.fill_rrect(r, radius, tint.fade(0.10 * k * ca)); }
+    g.fill_rrect(r, radius, Color::white((0.035 + 0.028 * k) * ca));
+    g.stroke_rrect(r, radius, Color(0.0, 0.0, 0.0, 0.11 * ca), 0.75);
+    g.stroke_rrect(Rect::new(r.x + 0.6, r.y + 0.6, (r.w - 1.2).max(0.0), (r.h - 1.2).max(0.0)), radius,
+        Color::white((0.055 + 0.12 * k) * ca), 0.8);
+    if k > 0.01 {
+        g.stroke_rrect(Rect::new(r.x + 0.5, r.y + 0.5, (r.w - 1.0).max(0.0), (r.h - 1.0).max(0.0)), radius,
+            tint.fade(0.34 * k * ca), 0.9);
+    }
 }
 
 // A calm purple when no cover is available; live artwork remains the accent.
@@ -31,6 +43,21 @@ fn glass_accent(a: &App) -> Color {
     let (_, _, _, _, hour, _, _, _) = sys::local_time();
     if (7..18).contains(&hour) { Color(0.75, 0.62, 0.87, 1.0) }
     else { Color(0.58, 0.50, 0.92, 1.0) }
+}
+
+fn page_accent(a: &App, page: Page) -> Color {
+    match page {
+        Page::Media => glass_accent(a),
+        Page::Activity => Color(0.42, 0.72, 1.0, 1.0),
+        Page::Agenda => Color(0.72, 0.61, 0.98, 1.0),
+        Page::Shelf => Color(0.35, 0.84, 0.71, 1.0),
+        Page::Clipboard => Color(0.91, 0.68, 1.0, 1.0),
+        Page::Apps => Color(0.53, 0.75, 1.0, 1.0),
+        Page::Controls => Color(0.65, 0.72, 1.0, 1.0),
+        Page::Stats => Color(0.36, 0.83, 0.79, 1.0),
+        Page::Power => Color(1.0, 0.62, 0.62, 1.0),
+        _ => glass_accent(a),
+    }
 }
 
 /// How far the page area sits below the top of the open panel (the tab row is above it).
@@ -141,7 +168,8 @@ mod rim_tests {
 pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let t = a.t_expand();
-    let rad = a.col_rad() + (36.0 - a.col_rad()) * t;
+    // Ease into a broader island shape as the panel grows, with softer lower corners.
+    let rad = a.col_rad() + (42.0 - a.col_rad()) * t;
 
     // Move the upper rounded corners above the screen. Both collapsed and
     // expanded states attach to the top with soft lower corners.
@@ -183,9 +211,16 @@ pub fn draw(a: &App, w: f32, h: f32, hits: &mut Vec<Hit>) {
     g.stroke_rrect(
         Rect::new(body.x + 0.5, body.y + 0.5, body.w - 1.0, body.h - 1.0),
         rad,
-        Color(0.0, 0.0, 0.0, 0.22),
+        Color::white(if live { 0.16 } else { 0.13 }),
+        0.9,
+    );
+    g.stroke_rrect(
+        Rect::new(body.x + 1.4, body.y + 1.4, body.w - 2.8, body.h - 2.8),
+        (rad - 1.0).max(1.0),
+        Color(0.0, 0.0, 0.0, 0.15),
         0.8,
     );
+    g.line((body.x + rad, 3.0), (body.x + body.w - rad, 3.0), 0.8, Color::white(0.13));
     // Keep the resting rim neutral. Accent is reserved for artwork, actual
     // notifications and interaction, never fixed pink/green edge segments.
     if !a.expanded && t < 0.05 {
@@ -959,7 +994,7 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         hits.push(Hit { r: back, act: Act::SubpageBack });
         g.fill_rrect(back, 12.0, HOVER.fade(ca));
         g.text("‹ Back", back, &f.small, T1.fade(ca), Align::Center);
-        let title = match a.page { Page::Assistant => "Quick Notion task", Page::Processes => "Task Manager", Page::WindowManager => "Window Layouts", Page::Mirror => "Mirror", Page::ShelfPreview => "Quick Look", Page::Activity => "Activity Center", Page::Weather => "Weather", Page::Tasks => "Focus & Tasks", Page::Typing => "Typing Sprint", _ => "Calculator" };
+        let title = match a.page { Page::Assistant => "Quick Spotify queue", Page::Processes => "Task Manager", Page::WindowManager => "Window Layouts", Page::Mirror => "Mirror", Page::ShelfPreview => "Quick Look", Page::Activity => "Activity Center", Page::Weather => "Weather", Page::Tasks => "Focus & Tasks", Page::Typing => "Typing Sprint", _ => "Calculator" };
         g.text(title, Rect::new(115.0, 8.0, EXP_W - 230.0, 28.0), &f.title, T1.fade(ca), Align::Center);
         let start = hits.len();
         g.shifted(0.0, CONTENT_Y, || match a.page {
@@ -1004,15 +1039,16 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         hits.push(Hit { r, act });
         let k = hot_k(a, act);
         if i < 5 {
-            glass_card(a, r, 10.0, ca * if a.page == *p { 0.8 } else { 0.42 + 0.3 * k }, a.page == *p || k > 0.5);
+            let selected = a.page == *p;
+            glass_card_k(a, r, 10.0, ca * if selected { 0.8 } else { 0.42 + 0.3 * k }, k.max(if selected { 0.28 } else { 0.0 }), page_accent(a, *p));
             if a.page == *p {
-                g.fill_rrect(Rect::new(r.x + 12.0, r.y + r.h - 3.0, r.w - 24.0, 2.0), 1.0, glass_accent(a).fade(ca));
+                g.fill_rrect(Rect::new(r.x + 12.0, r.y + r.h - 3.0, r.w - 24.0, 2.0), 1.0, page_accent(a, *p).fade(ca));
             }
         } else if a.page != *p {
-            g.fill_rrect(r, 7.0, Color::white(0.06 * k * ca));
+            g.fill_rrect(r, 7.0, page_accent(a, *p).fade(0.07 * k * ca));
         }
         let selected = a.page == *p;
-        let col = if selected { T1 } else { mix(Color::white(if i < 5 { 0.67 } else { 0.53 }), T1, k) };
+        let col = if selected { T1 } else { mix(Color::white(if i < 5 { 0.75 } else { 0.62 }), T1, k) };
         if i < 5 {
             g.icon(TAB_ICONS[i], Rect::new(r.x + 11.0, r.y + 6.0, 21.0, 18.0), &f.icon14, col.fade(ca));
             g.text(TAB_LABELS[i], Rect::new(r.x + 34.0, r.y + 5.0, r.w - 39.0, 20.0), &f.small, col.fade(ca), Align::Left);
@@ -1096,12 +1132,13 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     hits.push(Hit { r: overview, act: Act::Tab(Page::Agenda) });
     // One continuous composition instead of three competing dark-blue cards.
     // Hover is a material shift, not a thick outline.
-    let hero_hover = hot(a, Act::Tab(Page::Media));
-    glass_card(a, music, 22.0, ca, hero_hover);
-    glass_card(a, Rect::new(380.0, 6.0, 202.0, 136.0), 22.0, ca, hot(a, Act::WeatherOpen) || hot(a, Act::Tab(Page::Agenda)));
+    let hero_hover = hot_k(a, Act::Tab(Page::Media));
+    glass_card_k(a, music, 22.0, ca, hero_hover, glass_accent(a));
+    glass_card_k(a, Rect::new(380.0, 6.0, 202.0, 136.0), 22.0, ca,
+        hot_k(a, Act::WeatherOpen).max(hot_k(a, Act::Tab(Page::Agenda))), page_accent(a, Page::Agenda));
     g.fill_rrect(Rect::new(392.0, 73.0, 178.0, 1.0), 0.5, Color::white(0.12 * ca));
-    if hot(a, Act::WeatherOpen) { g.fill_rrect(weather_card, 20.0, Color::white(0.055 * ca)); }
-    if hot(a, Act::Tab(Page::Agenda)) { g.fill_rrect(overview, 20.0, Color::white(0.055 * ca)); }
+    if hot(a, Act::WeatherOpen) { g.fill_rrect(weather_card, 20.0, page_accent(a, Page::Agenda).fade(0.08 * ca)); }
+    if hot(a, Act::Tab(Page::Agenda)) { g.fill_rrect(overview, 20.0, page_accent(a, Page::Agenda).fade(0.08 * ca)); }
     g.fill_rrect(Rect::new(35.0, 7.0, 306.0, 1.0), 0.5, if a.art.is_some() { a.accent.fade(0.38 * ca) } else { Color::white(0.12 * ca) });
     if let Some(art) = &a.art {
         g.draw_bitmap(art, Rect::new(28.0, 18.0, 90.0, 90.0), 16.0, ca);
@@ -1178,8 +1215,8 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         let r = Rect::new(18.0 + i as f32 * 141.0, 153.0, 141.0, 48.0);
         let act = Act::Tab(*page);
         hits.push(Hit { r, act });
-        let hovered = hot(a, act);
-        if hovered { g.fill_rrect(Rect::new(r.x + 3.0, r.y + 4.0, r.w - 6.0, 40.0), 15.0, HOVER.fade(ca)); }
+        let hovered = hot_k(a, act);
+        if hovered > 0.01 { g.fill_rrect(Rect::new(r.x + 3.0, r.y + 4.0, r.w - 6.0, 40.0), 15.0, page_accent(a, *page).fade(0.08 * hovered * ca)); }
         if i > 0 { g.fill_rrect(Rect::new(r.x, r.y + 12.0, 1.0, 23.0), 0.5, Color::white(0.10 * ca)); }
         g.icon(*glyph, Rect::new(r.x + 17.0, r.y + 13.0, 22.0, 21.0), &f.icon14, a.accent.fade(ca));
         g.text(title, Rect::new(r.x + 45.0, r.y + 11.0, 87.0, 25.0), &f.small, T1.fade(ca), Align::Left);
@@ -1187,47 +1224,83 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let ask = Rect::new(18.0, 211.0, 564.0, 32.0);
     hits.push(Hit { r: ask, act: Act::AssistantOpen });
     glass_card(a, ask, 12.0, ca * 0.7, hot(a, Act::AssistantOpen));
-    g.icon('\u{E8F2}', Rect::new(32.0, 217.0, 24.0, 20.0), &f.icon14, glass_accent(a).fade(ca));
-    g.text("Quick Notion task", Rect::new(65.0, 214.0, 300.0, 25.0), &f.small, T1.fade(ca), Align::Left);
-    g.text("Capture an idea  ›", Rect::new(368.0, 214.0, 194.0, 25.0), &f.tiny, T3.fade(ca), Align::Right);
+    g.icon('\u{E8D6}', Rect::new(32.0, 217.0, 24.0, 20.0), &f.icon14, glass_accent(a).fade(ca));
+    g.text("Quick Spotify queue", Rect::new(65.0, 214.0, 300.0, 25.0), &f.small, T1.fade(ca), Align::Left);
+    g.text("Find a track to add next  ›", Rect::new(350.0, 214.0, 212.0, 25.0), &f.tiny, T3.fade(ca), Align::Right);
 }
 
 fn page_assistant(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     let g = &a.gfx;
     let f = &g.fonts;
-    let panel = Rect::new(20.0, 0.0, 560.0, 162.0);
-    glass_card(a, panel, 18.0, ca, false);
-    g.text("QUICK CAPTURE · NOTION", Rect::new(38.0, 14.0, 360.0, 18.0), &f.tiny, glass_accent(a).fade(ca), Align::Left);
-    if !a.assistant_question.is_empty() {
-        g.text(&a.assistant_question, Rect::new(38.0, 38.0, 520.0, 24.0), &f.small, T2.fade(ca), Align::Left);
+    let accent = glass_accent(a);
+    if a.spotify_client_id.is_empty() {
+        let panel = Rect::new(20.0, 0.0, 560.0, 242.0);
+        glass_card(a, panel, 20.0, ca, false);
+        g.text("YOUR MUSIC, ONE QUICK SEARCH", Rect::new(40.0, 16.0, 510.0, 18.0), &f.tiny, accent.fade(ca), Align::Left);
+        g.text("Add a song to your queue", Rect::new(40.0, 38.0, 510.0, 30.0), &f.title, T1.fade(ca), Align::Left);
+        g.text("Connect once with Spotify to search and queue tracks here.", Rect::new(40.0, 75.0, 510.0, 22.0), &f.small, T2.fade(ca), Align::Left);
+        g.text("In your Spotify Developer app, add this redirect address:", Rect::new(40.0, 112.0, 510.0, 19.0), &f.small, T1.fade(ca), Align::Left);
+        g.fill_rrect(Rect::new(40.0, 137.0, 510.0, 32.0), 10.0, Color(0.0, 0.0, 0.0, 0.20 * ca));
+        g.text(crate::spotify::REDIRECT_URI, Rect::new(51.0, 141.0, 488.0, 23.0), &f.small, T2.fade(ca), Align::Left);
+        let set = Rect::new(40.0, 185.0, 240.0, 38.0);
+        hits.push(Hit { r: set, act: Act::SpotifyClientId });
+        glass_card(a, set, 13.0, ca, hot(a, Act::SpotifyClientId));
+        g.icon('\u{E713}', Rect::new(52.0, 192.0, 22.0, 22.0), &f.icon14, accent.fade(ca));
+        let id_label = if a.spotify_client_id_entry { a.entering.as_ref().map(|v| String::from_utf16_lossy(v)).unwrap_or_default() } else { "Enter Spotify Client ID".to_string() };
+        g.text(&id_label, Rect::new(78.0, 188.0, 194.0, 30.0), &f.small, T1.fade(ca), Align::Left);
+        g.text(&a.spotify_status, Rect::new(292.0, 188.0, 254.0, 32.0), &f.tiny, T2.fade(ca), Align::Left);
+        return;
     }
-    let hebrew = a.assistant_answer.chars().any(|c| ('\u{0590}'..='\u{05ff}').contains(&c));
-    let mut lines = Vec::new();
-    let mut line = String::new();
-    for word in a.assistant_answer.split_whitespace() {
-        if !line.is_empty() && line.chars().count() + word.chars().count() + 1 > 42 {
-            lines.push(std::mem::take(&mut line));
-        }
-        if !line.is_empty() { line.push(' '); }
-        line.push_str(word);
+
+    if !crate::spotify::connected() {
+        let panel = Rect::new(20.0, 0.0, 560.0, 242.0);
+        glass_card(a, panel, 20.0, ca, false);
+        g.text("SPOTIFY QUEUE", Rect::new(40.0, 16.0, 510.0, 18.0), &f.tiny, accent.fade(ca), Align::Left);
+        g.text("Connect your account", Rect::new(40.0, 39.0, 510.0, 30.0), &f.title, T1.fade(ca), Align::Left);
+        g.text("Sign in in your browser. Queueing requires Spotify Premium + active playback.", Rect::new(40.0, 78.0, 510.0, 24.0), &f.small, T2.fade(ca), Align::Left);
+        let connect = Rect::new(40.0, 122.0, 250.0, 42.0);
+        hits.push(Hit { r: connect, act: Act::SpotifyConnect });
+        glass_card(a, connect, 14.0, ca, hot(a, Act::SpotifyConnect));
+        g.icon('\u{E774}', Rect::new(53.0, 131.0, 23.0, 23.0), &f.icon14, accent.fade(ca));
+        g.text(if a.spotify_busy { "Waiting for Spotify…" } else { "Connect Spotify" }, Rect::new(82.0, 126.0, 194.0, 34.0), &f.small, T1.fade(ca), Align::Left);
+        let change = Rect::new(40.0, 174.0, 250.0, 31.0);
+        hits.push(Hit { r: change, act: Act::SpotifyClientId });
+        g.text("Change Client ID", change, &f.tiny, T3.fade(ca), Align::Left);
+        g.text(&a.spotify_status, Rect::new(312.0, 124.0, 236.0, 67.0), &f.small, T2.fade(ca), Align::Left);
+        g.text("Your refresh token is encrypted for this Windows account.", Rect::new(40.0, 215.0, 510.0, 17.0), &f.tiny, T3.fade(ca), Align::Left);
+        return;
     }
-    if !line.is_empty() { lines.push(line); }
-    for (i, line) in lines.iter().skip(a.assistant_scroll).take(4).enumerate() {
-        g.text(line, Rect::new(38.0, 68.0 + i as f32 * 21.0, 520.0, 21.0), &f.small, T1.fade(ca), if hebrew { Align::Right } else { Align::Left });
+
+    let entry = Rect::new(20.0, 2.0, 441.0, 40.0);
+    hits.push(Hit { r: entry, act: Act::SpotifySearchInput });
+    glass_card_k(a, entry, 13.0, ca, hot_k(a, Act::SpotifySearchInput), accent);
+    g.icon('\u{E721}', Rect::new(31.0, 10.0, 23.0, 23.0), &f.icon14, accent.fade(ca));
+    let query = if a.spotify_query_entry { a.entering.as_ref().map(|s| String::from_utf16_lossy(s)).unwrap_or_default() } else { a.spotify_query.clone() };
+    g.text(if query.is_empty() { "Search songs or artists…" } else { &query }, Rect::new(61.0, 6.0, 385.0, 31.0), &f.body, (if query.is_empty() { T3 } else { T1 }).fade(ca), Align::Left);
+    let search = Rect::new(470.0, 2.0, 110.0, 40.0);
+    hits.push(Hit { r: search, act: Act::SpotifySearch });
+    glass_card(a, search, 13.0, ca, hot(a, Act::SpotifySearch));
+    g.text("Search", search, &f.small, accent.fade(ca), Align::Center);
+    g.text(&a.spotify_status, Rect::new(24.0, 46.0, 548.0, 18.0), &f.tiny, T2.fade(ca), Align::Left);
+    for (i, track) in a.spotify_tracks.iter().take(5).enumerate() {
+        let y = 68.0 + i as f32 * 34.0;
+        let row = Rect::new(20.0, y, 560.0, 30.0);
+        let act = Act::SpotifyQueue(i);
+        hits.push(Hit { r: row, act });
+        glass_card_k(a, row, 9.0, ca, hot_k(a, act), accent);
+        g.text(&track.title, Rect::new(31.0, y + 1.0, 382.0, 15.0), &f.small, T1.fade(ca), Align::Left);
+        g.text(&format!("{} · {}", track.artist, track.album), Rect::new(31.0, y + 15.0, 390.0, 12.0), &f.tiny, T3.fade(ca), Align::Left);
+        g.text("+ Queue", Rect::new(449.0, y + 2.0, 117.0, 25.0), &f.small, accent.fade(ca), Align::Right);
     }
-    if lines.len() > 4 { g.text("SCROLL FOR MORE", Rect::new(390.0, 142.0, 164.0, 14.0), &f.tiny, T3.fade(ca), Align::Right); }
-    let input = Rect::new(20.0, 176.0, 560.0, 48.0);
-    hits.push(Hit { r: input, act: Act::AssistantAsk });
-    glass_card(a, input, 16.0, ca, hot(a, Act::AssistantAsk));
-    let prompt = if a.assistant_entry { a.entering.as_ref().map(|b| format!("{}│", String::from_utf16_lossy(b))).unwrap_or_default() }
-        else if a.assistant_busy { "Saving to Notion...".into() }
-        else { "Write a task in Hebrew or English...".into() };
-    g.icon('\u{E8F2}', Rect::new(32.0, 188.0, 24.0, 24.0), &f.icon14, glass_accent(a).fade(ca));
-    g.text(&prompt, Rect::new(65.0, 184.0, 500.0, 32.0), &f.small, T1.fade(ca), Align::Left);
-    let notion = Rect::new(20.0, 231.0, 560.0, 25.0);
-    if !a.assistant_question.is_empty() && !a.assistant_busy { hits.push(Hit { r: notion, act: Act::AssistantNotion }); }
-    glass_card(a, notion, 9.0, ca * 0.7, hot(a, Act::AssistantNotion));
-    g.text(if crate::notion::configured() { "Save task to Notion" } else { "Notion setup required · Run SETUP-NOTION.ps1" }, notion, &f.tiny, T2.fade(ca), Align::Center);
+    let disconnect = Rect::new(20.0, 242.0, 130.0, 18.0);
+    hits.push(Hit { r: disconnect, act: Act::SpotifyDisconnect });
+    g.text("Remove local connection", disconnect, &f.tiny, T3.fade(ca), Align::Left);
+    let reconnect = Rect::new(470.0, 242.0, 110.0, 18.0);
+    hits.push(Hit { r: reconnect, act: Act::SpotifyConnect });
+    g.text("Reconnect", reconnect, &f.tiny, accent.fade(ca), Align::Right);
+    if a.spotify_tracks.is_empty() && !a.spotify_busy {
+        g.text("Choose a result to add it after the current track.", Rect::new(24.0, 86.0, 548.0, 26.0), &f.small, T3.fade(ca), Align::Center);
+    }
 }
 
 fn page_agenda(a: &App, ca: f32) {
@@ -1336,13 +1409,19 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
 
     // The full lyric view remains available; the current line is always
     // visible below the player when the source supplies lyrics.
-    let lyrics_button = Rect::new(480.0, 163.0, 84.0, 25.0);
+    let lyrics_button = Rect::new(390.0, 98.0, 84.0, 22.0);
     hits.push(Hit { r: lyrics_button, act: Act::LyricsToggle });
-    g.fill_rrect(lyrics_button, 12.0, (if hot(a, Act::LyricsToggle) { a.accent.fade(0.28) } else { Color::white(0.095) }).fade(ca));
-    g.text("Lyrics ♪", lyrics_button, &f.small, a.accent.fade(ca), Align::Center);
-    let lyric_strip = Rect::new(16.0, 209.0, EXP_W - 32.0, 33.0);
-    glass_card(a, lyric_strip, 11.0, ca * 0.7, false);
-    g.icon('\u{E8D6}', Rect::new(27.0, 214.0, 22.0, 23.0), &f.icon14, glass_accent(a).fade(ca));
+    glass_card_k(a, lyrics_button, 12.0, ca, hot_k(a, Act::LyricsToggle), glass_accent(a));
+    g.text("Lyrics ↗", lyrics_button, &f.small, glass_accent(a).fade(ca), Align::Center);
+    let queue_button = Rect::new(480.0, 98.0, 84.0, 22.0);
+    hits.push(Hit { r: queue_button, act: Act::AssistantOpen });
+    glass_card_k(a, queue_button, 12.0, ca, hot_k(a, Act::AssistantOpen), glass_accent(a));
+    g.text("+ Queue", queue_button, &f.small, glass_accent(a).fade(ca), Align::Center);
+    let lyric_strip = Rect::new(16.0, 209.0, EXP_W - 32.0, 38.0);
+    g.fill_rrect(lyric_strip, 13.0, Color(0.0, 0.0, 0.0, 0.16 * ca));
+    g.fill_rrect(lyric_strip, 13.0, glass_accent(a).fade(0.055 * ca));
+    g.stroke_rrect(lyric_strip, 13.0, Color::white(0.13 * ca), 0.8);
+    g.fill_rrect(Rect::new(25.0, 218.0, 2.0, 20.0), 1.0, glass_accent(a).fade(0.78 * ca));
     let lyric = crate::lyrics::snapshot()
         .filter(|s| s.key == crate::lyrics::key(&m.title, &m.artist))
         .map(|data| {
@@ -1353,10 +1432,11 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
                 data.lines[index].text.clone()
             }
         }).unwrap_or_else(|| "Finding lyrics...".into());
-    g.text(&lyric, Rect::new(56.0, 213.0, EXP_W - 83.0, 25.0), &f.small, T2.fade(ca), Align::Left);
+    g.text("LYRICS", Rect::new(37.0, 210.0, 65.0, 15.0), &f.tiny, T3.fade(ca), Align::Left);
+    g.text(&lyric, Rect::new(37.0, 222.0, EXP_W - 68.0, 20.0), &f.small, T1.fade(ca), Align::Left);
 
     // artwork
-    let ar = Rect::new(29.0, 23.0, 116.0, 116.0);
+    let ar = Rect::new(27.0, 20.0, 122.0, 122.0);
     match art {
         Some(bmp) => g.draw_bitmap(bmp, ar, 16.0, ca),
         None => {
@@ -1368,7 +1448,8 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         g.fill_rrect(ar, 16.0, Color(0.0, 0.0, 0.0, 0.5 * ca));
         spinner(g, ar.cx(), ar.cy(), 18.0, a.spin_t, a.accent, ca);
     }
-    g.stroke_rrect(ar, 16.0, glass_accent(a).fade(0.34 * ca), 1.0);
+    g.stroke_rrect(Rect::new(ar.x - 0.5, ar.y - 0.5, ar.w + 1.0, ar.h + 1.0), 17.0, Color::white(0.23 * ca), 0.8);
+    g.stroke_rrect(ar, 16.0, glass_accent(a).fade(0.43 * ca), 1.1);
 
     // Spotify-specific volume from Windows Volume Mixer. This is not Spotify's
     // internal playback-volume setting, and does not change system master volume.
@@ -1386,7 +1467,7 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         g.text(&format!("{}%", (v * 100.0).round() as u32), Rect::new(141.0, 177.0, 27.0, 17.0), &f.tiny, T2.fade(ca), Align::Right);
     }
 
-    let tx = 164.0;
+    let tx = 166.0;
     let tw = EXP_W - tx - 52.0;
     g.text("NOW PLAYING", Rect::new(tx, 28.0, tw, 16.0), &f.tiny, a.accent.fade(ca), Align::Left);
     let title = if m.title.is_empty() {
@@ -1418,7 +1499,7 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     // That is not useful information to show in a polished player.
     let friendly_app = !m.app.is_empty()
         && !(m.app.len() >= 12 && m.app.chars().all(|c| c.is_ascii_hexdigit()));
-    g.text(if friendly_app { &m.app } else { "MEDIA SESSION" }, Rect::new(tx, 100.0, 285.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
+    g.text(if friendly_app { &m.app } else { "MEDIA SESSION" }, Rect::new(tx, 100.0, 212.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
 
     // progress
     let (pos, dur) = if loading.is_some() { (0.0, 0.0) } else { m.progress(sys::filetime_now()) };
@@ -1597,13 +1678,24 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     for (i, (act, glyph, label)) in commands.iter().enumerate() {
         let col = (i % 2) as f32;
         let row = (i / 2) as f32;
-        let r = Rect::new(222.0 + col * 181.0, 68.0 + row * 45.0, 173.0, 39.0);
+        let r = Rect::new(222.0 + col * 181.0, 68.0 + row * 39.0, 173.0, 35.0);
         hits.push(Hit { r, act: *act });
         glass_card(a, r, 10.0, ca, hot(a, *act));
         g.fill_rrect(Rect::new(r.x, r.y + 6.0, 2.0, r.h - 12.0), 1.0, glass_accent(a).fade(0.55 * ca));
         g.icon(*glyph, Rect::new(r.x + 9.0, r.y + 7.0, 25.0, 25.0), &g.fonts.icon14, glass_accent(a).fade(ca));
         g.text(label, Rect::new(r.x + 38.0, r.y + 3.0, r.w - 43.0, 33.0), &g.fonts.small, T1.fade(ca), Align::Left);
     }
+    let taskbar = Rect::new(20.0, 228.0, 560.0, 30.0);
+    let enabled = a.dock.as_ref().is_some_and(|dock| dock.enabled);
+    hits.push(Hit { r: taskbar, act: Act::DockToggle });
+    glass_card(a, taskbar, 12.0, ca, hot(a, Act::DockToggle));
+    g.icon('\u{E8F2}', Rect::new(32.0, 232.0, 22.0, 22.0), &g.fonts.icon14, glass_accent(a).fade(ca));
+    g.text("Glass taskbar", Rect::new(62.0, 230.0, 180.0, 26.0), &g.fonts.small, T1.fade(ca), Align::Left);
+    g.text(if enabled { "On · Windows taskbar auto-hides" } else { "Off · Windows taskbar stays visible" },
+        Rect::new(246.0, 230.0, 278.0, 26.0), &g.fonts.tiny, T2.fade(ca), Align::Right);
+    let track = Rect::new(535.0, 235.0, 31.0, 16.0);
+    g.fill_rrect(track, 8.0, if enabled { glass_accent(a).fade(0.78 * ca) } else { Color::white(0.15 * ca) });
+    g.fill_circle(if enabled { 557.0 } else { 543.0 }, 243.0, 5.5, Color::white(ca));
 }
 
 /// Nock-local notification history plus real live work already tracked by Nock.

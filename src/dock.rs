@@ -132,13 +132,18 @@ impl Dock {
         let g = &self.gfx;
         let (_, _, _, _, hh, mm, _, _) = sys::local_time();
         let day = (7..18).contains(&hh);
-        let base = if day { Color(0.12, 0.11, 0.13, 0.68) } else { Color(0.055, 0.065, 0.09, 0.70) };
+        let tint = if day { Color(0.74, 0.66, 0.94, 1.0) } else { Color(0.58, 0.64, 1.0, 1.0) };
+        let base = if day { Color(0.10, 0.10, 0.13, 0.52) } else { Color(0.045, 0.055, 0.085, 0.56) };
         let shell = Rect::new(1.0, 1.0, w - 2.0, H - 2.0);
         if let Some(bitmap) = &self.glass_bitmap {
             g.draw_bitmap_mapped(bitmap, Rect::new(0.0, 0.0, w, H), shell, 19.0, 0.94);
         }
         g.fill_rrect(shell, 19.0, base);
-        g.stroke_rrect(shell, 19.0, Color::white(0.26), 0.8);
+        g.fill_rrect(shell, 19.0, Color::white(0.035));
+        g.stroke_rrect(shell, 19.0, Color::white(0.31), 0.9);
+        g.stroke_rrect(Rect::new(shell.x + 1.0, shell.y + 1.0, shell.w - 2.0, shell.h - 2.0), 18.0, Color::white(0.055), 0.8);
+        g.line((shell.x + 22.0, 2.0), (shell.x + w - 22.0, 2.0), 0.8, Color::white(0.24));
+        g.fill_rrect(Rect::new(shell.x + 20.0, H - 2.5, shell.w - 40.0, 1.0), 0.5, tint.fade(0.19));
         g.line((96.0, 13.0), (96.0, H - 13.0), 1.0, Color::white(0.13));
         g.line((w - 137.0, 13.0), (w - 137.0, H - 13.0), 1.0, Color::white(0.13));
         g.icon('\u{E80F}', Rect::new(18.0, 15.0, 24.0, 24.0), &g.fonts.icon14, Color::white(0.94));
@@ -148,7 +153,11 @@ impl Dock {
             let active = self.hot == Some(i);
             let focused = pin_exe(app).is_some_and(|name| foreground.as_deref() == Some(name.as_str()));
             let draw_r = if active { Rect::new(r.x - 1.5, r.y - 3.0, r.w + 3.0, r.h + 3.0) } else { r };
-            if active { g.fill_rrect(draw_r, 14.0, Color::white(0.12)); }
+            if active {
+                g.fill_rrect(Rect::new(draw_r.x - 2.0, draw_r.y - 1.0, draw_r.w + 4.0, draw_r.h + 2.0), 15.0, tint.fade(0.10));
+                g.fill_rrect(draw_r, 14.0, Color::white(0.12));
+                g.stroke_rrect(draw_r, 14.0, tint.fade(0.38), 0.8);
+            }
             if focused { g.stroke_rrect(Rect::new(r.x + 1.0, r.y + 1.0, r.w - 2.0, r.h - 2.0), 12.0, Color::white(0.34), 0.8); }
             if let Some(bmp) = self.icons.get(i).and_then(|b| b.as_ref()) {
                 g.draw_bitmap(bmp, Rect::new(draw_r.cx() - 15.0, draw_r.y + 2.0, 30.0, 30.0), 8.0, 1.0);
@@ -159,7 +168,7 @@ impl Dock {
             }
             if self.running.get(i).copied().unwrap_or(false) {
                 let width = if focused || active { 20.0 } else { 9.0 };
-                let color = if focused { Color::white(0.96) } else { Color(0.82, 0.72, 1.0, 0.96) };
+                let color = if focused { Color::white(0.96) } else { tint.fade(0.96) };
                 g.fill_rrect(Rect::new(draw_r.cx() - width / 2.0, H - 9.0, width, 2.5), 1.25, color);
             } else if active {
                 g.fill_rrect(Rect::new(draw_r.cx() - 7.0, H - 9.0, 14.0, 2.0), 1.0, Color::white(0.55));
@@ -170,7 +179,11 @@ impl Dock {
             let r = Self::icon_rect(index);
             let active = self.hot == Some(index);
             let focused = foreground.as_deref() == Some(name.as_str());
-            if active { g.fill_rrect(r, 14.0, Color::white(0.12)); }
+            if active {
+                g.fill_rrect(Rect::new(r.x - 2.0, r.y - 1.0, r.w + 4.0, r.h + 2.0), 15.0, tint.fade(0.10));
+                g.fill_rrect(r, 14.0, Color::white(0.12));
+                g.stroke_rrect(r, 14.0, tint.fade(0.38), 0.8);
+            }
             if focused { g.stroke_rrect(Rect::new(r.x + 1.0, r.y + 1.0, r.w - 2.0, r.h - 2.0), 12.0, Color::white(0.34), 0.8); }
             if let Some(bmp) = self.extra_icons.get(name).and_then(|icon| icon.as_ref()) {
                 g.draw_bitmap(bmp, Rect::new(r.cx() - 15.0, r.y + 2.0, 30.0, 30.0), 8.0, 1.0);
@@ -178,7 +191,7 @@ impl Dock {
                 g.text(&name.chars().next().unwrap_or('A').to_ascii_uppercase().to_string(), r, &g.fonts.body, Color::white(0.92), Align::Center);
             }
             g.fill_rrect(Rect::new(r.cx() - if focused { 10.0 } else { 5.0 }, H - 9.0, if focused { 20.0 } else { 10.0 }, 2.5), 1.25,
-                if focused { Color::white(0.96) } else { Color(0.82, 0.72, 1.0, 0.96) });
+                if focused { Color::white(0.96) } else { tint.fade(0.96) });
         }
         g.icon('\u{E767}', Rect::new(w - 119.0, 15.0, 25.0, 24.0), &g.fonts.icon14, Color::white(0.78));
         g.text(&format!("{hh:02}:{mm:02}"), Rect::new(w - 83.0, 7.0, 76.0, 29.0), &g.fonts.body, Color::white(0.95), Align::Center);
