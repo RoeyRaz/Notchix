@@ -469,19 +469,23 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
 
     let copy = crate::explorer_copy::current();
     let qbit = crate::qbit::current();
+    let prism = crate::prism::current();
     let transfer = crate::transfer::current();
     // A transfer is a secondary live activity whenever music is present.
     // Never force the user to choose between Now Playing and downloads.
-    if a.mstate.has_track() && (copy.is_some() || qbit.is_some() || transfer.is_some()) {
+    if a.mstate.has_track() && (copy.is_some() || qbit.is_some() || prism.is_some() || transfer.is_some()) {
         let inset = if a.mascot_visible { 40.0 } else { 0.0 };
         if a.mascot_visible { draw_miso(a, ca); }
         g.shifted(inset, 0.0, || draw_collapsed_regular(a, w - inset - 78.0, ca));
         g.fill_rrect(Rect::new(w - 78.0, ch / 2.0 - 13.0, 1.0, 26.0), 0.5, Color::white(0.16 * ca));
         let (progress, label, count) = if let Some(progress) = copy {
-            (Some(progress), "Files".to_string(), 1 + usize::from(qbit.is_some()) + usize::from(transfer.is_some()))
+            (Some(progress), "Files".to_string(), 1 + usize::from(qbit.is_some()) + prism.as_ref().map(|p| p.count).unwrap_or(0) + usize::from(transfer.is_some()))
         } else if let Some(item) = qbit.as_ref() {
             let eta = item.eta.map(|s| if s >= 3600 { format!("{}h{:02}m", s / 3600, s % 3600 / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "qBit".into());
-            (Some(item.percent), eta, item.count + usize::from(transfer.is_some()))
+            (Some(item.percent), eta, item.count + prism.as_ref().map(|p| p.count).unwrap_or(0) + usize::from(transfer.is_some()))
+        } else if let Some(item) = prism.as_ref() {
+            let eta = item.eta.map(|s| if s >= 3600 { format!("{}h{:02}m", s / 3600, s % 3600 / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "Prism".into());
+            (item.percent, eta, item.count + usize::from(transfer.is_some()))
         } else {
             (None, transfer.as_ref().map(|v| v.app.clone()).unwrap_or_default(), 1)
         };
@@ -520,6 +524,27 @@ fn draw_collapsed(a: &App, w: f32, ca: f32) {
         let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
         g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
         g.fill_rrect(Rect::new(track.x, track.y, track.w * item.percent, track.h), 2.0, accent);
+        return;
+    }
+
+    if let Some(item) = prism {
+        let left = if a.mascot_visible { 52.0 } else { 17.0 };
+        if a.mascot_visible { draw_miso(a, ca); }
+        let accent = a.accent.fade(ca);
+        g.icon('\u{E896}', Rect::new(left, 0.0, 22.0, ch), &f.icon14, accent);
+        let pct = item.percent.map(|p| format!("{}%", (p * 100.0).round() as u32)).unwrap_or_else(|| item.state.clone());
+        let eta = item.eta.map(|s| if s >= 3600 { format!("{}h {}m", s / 3600, (s % 3600) / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_else(|| "ETA unknown".into());
+        let detail = format!("{}  ·  {}  ·  {}", pct, crate::transfer::rate_label(item.speed), eta);
+        g.text(&format!("Prism · {}", item.name), Rect::new(left + 28.0, 2.0, (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.tiny, T2.fade(ca), Align::Left);
+        g.text(&detail, Rect::new(left + 28.0, (ch / 2.0 - 1.0).max(15.0), (w - left - 42.0).max(40.0), (ch / 2.0).max(17.0)), &f.small, T1.fade(ca), Align::Left);
+        let track = Rect::new(left + 28.0, ch - 7.0, (w - left - 50.0).max(30.0), 4.0);
+        g.fill_rrect(track, 2.0, Color::white(0.19 * ca));
+        if let Some(progress) = item.percent {
+            g.fill_rrect(Rect::new(track.x, track.y, track.w * progress, track.h), 2.0, accent);
+        } else {
+            let phase = (sys::filetime_now().rem_euclid(20_000_000) as f32) / 20_000_000.0;
+            g.fill_rrect(Rect::new(track.x + track.w * phase * 0.70, track.y, track.w * 0.30, track.h), 2.0, accent);
+        }
         return;
     }
 
@@ -1848,6 +1873,9 @@ fn page_stats(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         if let Some(q) = crate::qbit::current() { format!("{note} · qBit {}%", (q.percent * 100.0).round() as u32) } else { note }
     } else if let Some(q) = crate::qbit::current() {
         format!("qBit {}%", (q.percent * 100.0).round() as u32)
+    } else if let Some(p) = crate::prism::current() {
+        let percent = p.percent.map(|v| format!("{}%", (v * 100.0).round() as u32)).unwrap_or_else(|| "active".into());
+        format!("Prism {percent}")
     } else if let Some(io) = crate::transfer::current() {
         format!("{} I/O", io.app)
     } else {

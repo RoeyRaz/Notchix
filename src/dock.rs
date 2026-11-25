@@ -105,6 +105,7 @@ impl Dock {
 
     pub fn draw(&mut self, apps: &[AppEntry], mon: &RECT, scale: f32) {
         let windows = visible_apps();
+        let foreground = foreground_exe();
         self.running = apps.iter().take(7).map(|app| pin_exe(app).is_some_and(|name| windows.contains_key(&name))).collect();
         let pinned: HashSet<String> = apps.iter().take(7).filter_map(pin_exe).collect();
         let slots = Self::extra_slots(apps.len());
@@ -145,8 +146,10 @@ impl Dock {
         for (i, app) in apps.iter().take(7).enumerate() {
             let r = Self::icon_rect(i);
             let active = self.hot == Some(i);
+            let focused = pin_exe(app).is_some_and(|name| foreground.as_deref() == Some(name.as_str()));
             let draw_r = if active { Rect::new(r.x - 1.5, r.y - 3.0, r.w + 3.0, r.h + 3.0) } else { r };
             if active { g.fill_rrect(draw_r, 14.0, Color::white(0.12)); }
+            if focused { g.stroke_rrect(Rect::new(r.x + 1.0, r.y + 1.0, r.w - 2.0, r.h - 2.0), 12.0, Color::white(0.34), 0.8); }
             if let Some(bmp) = self.icons.get(i).and_then(|b| b.as_ref()) {
                 g.draw_bitmap(bmp, Rect::new(draw_r.cx() - 15.0, draw_r.y + 2.0, 30.0, 30.0), 8.0, 1.0);
             } else {
@@ -155,8 +158,9 @@ impl Dock {
                 g.text(&initial, Rect::new(draw_r.cx() - 12.0, draw_r.y + 3.0, 24.0, 27.0), &g.fonts.body, Color::white(0.93), Align::Center);
             }
             if self.running.get(i).copied().unwrap_or(false) {
-                let width = if active { 20.0 } else { 9.0 };
-                g.fill_rrect(Rect::new(draw_r.cx() - width / 2.0, H - 9.0, width, 2.5), 1.25, Color(0.82, 0.72, 1.0, 0.96));
+                let width = if focused || active { 20.0 } else { 9.0 };
+                let color = if focused { Color::white(0.96) } else { Color(0.82, 0.72, 1.0, 0.96) };
+                g.fill_rrect(Rect::new(draw_r.cx() - width / 2.0, H - 9.0, width, 2.5), 1.25, color);
             } else if active {
                 g.fill_rrect(Rect::new(draw_r.cx() - 7.0, H - 9.0, 14.0, 2.0), 1.0, Color::white(0.55));
             }
@@ -165,13 +169,16 @@ impl Dock {
             let index = apps.len().min(7) + i;
             let r = Self::icon_rect(index);
             let active = self.hot == Some(index);
+            let focused = foreground.as_deref() == Some(name.as_str());
             if active { g.fill_rrect(r, 14.0, Color::white(0.12)); }
+            if focused { g.stroke_rrect(Rect::new(r.x + 1.0, r.y + 1.0, r.w - 2.0, r.h - 2.0), 12.0, Color::white(0.34), 0.8); }
             if let Some(bmp) = self.extra_icons.get(name).and_then(|icon| icon.as_ref()) {
                 g.draw_bitmap(bmp, Rect::new(r.cx() - 15.0, r.y + 2.0, 30.0, 30.0), 8.0, 1.0);
             } else {
                 g.text(&name.chars().next().unwrap_or('A').to_ascii_uppercase().to_string(), r, &g.fonts.body, Color::white(0.92), Align::Center);
             }
-            g.fill_rrect(Rect::new(r.cx() - 5.0, H - 9.0, 10.0, 2.5), 1.25, Color(0.82, 0.72, 1.0, 0.96));
+            g.fill_rrect(Rect::new(r.cx() - if focused { 10.0 } else { 5.0 }, H - 9.0, if focused { 20.0 } else { 10.0 }, 2.5), 1.25,
+                if focused { Color::white(0.96) } else { Color(0.82, 0.72, 1.0, 0.96) });
         }
         g.icon('\u{E767}', Rect::new(w - 119.0, 15.0, 25.0, 24.0), &g.fonts.icon14, Color::white(0.78));
         g.text(&format!("{hh:02}:{mm:02}"), Rect::new(w - 83.0, 7.0, 76.0, 29.0), &g.fonts.body, Color::white(0.95), Align::Center);
@@ -259,6 +266,25 @@ fn visible_apps() -> HashMap<String, (HWND, String)> {
     let mut windows = HashMap::<String, (HWND, String)>::new();
     unsafe { let _ = EnumWindows(Some(collect_visible_app), LPARAM((&mut windows as *mut HashMap<String, (HWND, String)>) as isize)); }
     windows
+}
+
+/// Name of the foreground process, used only for the taskbar's active-app cue.
+fn foreground_exe() -> Option<String> {
+    unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.0.is_null() { return None; }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut path = [0u16; 520];
+        let mut len = path.len() as u32;
+        let result = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut len);
+        let _ = CloseHandle(process);
+        result.ok()?;
+        Path::new(&String::from_utf16_lossy(&path[..len as usize]))
+            .file_name()
+            .map(|name| name.to_string_lossy().to_ascii_lowercase())
+    }
 }
 
 fn activate_pin(app: &AppEntry) -> bool {

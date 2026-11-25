@@ -255,7 +255,11 @@ impl App {
         let transfer = crate::qbit::current().map(|q| {
             let eta = q.eta.map(|s| if s >= 3600 { format!("{}h {}m", s / 3600, (s % 3600) / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_default();
             format!("↓ qBit {}%  {eta}", (q.percent * 100.0).round() as u32)
-        }).or_else(|| crate::transfer::current().map(|a| format!("↓ {} active", a.app)));
+        }).or_else(|| crate::prism::current().map(|p| {
+            let percent = p.percent.map(|v| format!("{}%", (v * 100.0).round() as u32)).unwrap_or_else(|| "active".into());
+            let eta = p.eta.map(|s| if s >= 3600 { format!("{}h {}m", s / 3600, (s % 3600) / 60) } else { format!("{}m", (s + 59) / 60) }).unwrap_or_default();
+            format!("↓ Prism {percent}  {eta}")
+        })).or_else(|| crate::transfer::current().map(|a| format!("↓ {} active", a.app)));
         g.text(
             &bar.app_name,
             Rect::new(14.0, 0.0, if transfer.is_some() && name_w > 345.0 { 175.0 } else { name_w }, BAR_H),

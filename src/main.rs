@@ -39,6 +39,7 @@ mod transfer;
 mod explorer_copy;
 #[cfg(windows)]
 mod qbit;
+mod prism;
 #[cfg(windows)]
 mod weather;
 #[cfg(windows)]

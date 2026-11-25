@@ -1468,31 +1468,38 @@ impl App {
             T_TRANSFERS => {
                 let explorer_changed = crate::explorer_copy::take_changed();
                 crate::explorer_copy::sample_async();
+                let prism_changed = crate::prism::take_changed();
+                crate::prism::sample_async();
                 let camera = sys::camera_in_use();
                 if camera != self.camera_active {
                     self.camera_active = camera;
                     if !self.hidden && !self.fs_hidden { self.render(); }
                 }
                 let activity_changed = crate::transfer::sample();
-                let transfer_active = crate::transfer::current().is_some() || crate::qbit::current().is_some() || crate::explorer_copy::current().is_some();
+                let transfer_active = crate::transfer::current().is_some()
+                    || crate::qbit::current().is_some()
+                    || crate::prism::current().is_some()
+                    || crate::explorer_copy::current().is_some();
                 let transfer_toggled = transfer_active != self.transfer_was_active;
                 self.transfer_was_active = transfer_active;
-                if crate::transfer::current().is_some() && !self.hidden && !self.fs_hidden {
+                if transfer_active && !self.hidden && !self.fs_hidden {
                     self.set_timer(T_TRANSFER_ANIM, 120);
                 } else {
                     self.kill_timer(T_TRANSFER_ANIM);
                 }
-                if (activity_changed || explorer_changed || transfer_active || transfer_toggled) && !self.expanded && !self.hidden && !self.fs_hidden {
+                if (activity_changed || explorer_changed || prism_changed || transfer_active || transfer_toggled) && !self.expanded && !self.hidden && !self.fs_hidden {
                     let (target_w, _) = self.target_size();
                     if (self.sw.x - target_w).abs() > 1.0 { self.retarget(); }
                     else { self.render(); }
-                } else if explorer_changed && self.expanded && !self.hidden && !self.fs_hidden {
+                } else if (explorer_changed || prism_changed) && self.expanded && !self.hidden && !self.fs_hidden {
                     self.render();
                 }
             }
             T_TRANSFER_ANIM => {
                 if !self.expanded && !self.hidden && !self.fs_hidden && !self.tucked
-                    && crate::transfer::current().is_some() {
+                    && (crate::transfer::current().is_some()
+                        || crate::qbit::current().is_some()
+                        || crate::prism::current().is_some()) {
                     self.render();
                 }
             }
