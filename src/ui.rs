@@ -2916,6 +2916,28 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             hits,
             true,
         );
+    } else {
+        // Keep the volume control's place in the player even when Windows has
+        // not exposed Spotify's per-app audio session yet. No level is shown
+        // or invented, and the inactive placeholder cannot be dragged.
+        g.icon(
+            '\u{E767}',
+            Rect::new(tx, 91.0, 18.0, 16.0),
+            &f.icon14,
+            T3.fade(ca),
+        );
+        g.fill_rrect(
+            Rect::new(tx + 24.0, 97.0, 150.0, 3.0),
+            1.5,
+            Color::white(0.18 * ca),
+        );
+        g.text(
+            "Unavailable",
+            Rect::new(tx + 183.0, 91.0, 100.0, 16.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
+        );
     }
     g.text(
         if friendly_app {
@@ -3340,6 +3362,25 @@ fn page_media_single(
             ca,
             hits,
             true,
+        );
+    } else {
+        g.icon(
+            '\u{E767}',
+            Rect::new(39.0, 178.0, 20.0, 20.0),
+            &f.icon14,
+            T3.fade(ca),
+        );
+        g.fill_rrect(
+            Rect::new(66.0, 186.0, 124.0, 3.0),
+            1.5,
+            Color::white(0.18 * ca),
+        );
+        g.text(
+            "Unavailable",
+            Rect::new(194.0, 178.0, 76.0, 18.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Left,
         );
     }
     let queue = Rect::new(447.0, 150.0, 111.0, 30.0);
