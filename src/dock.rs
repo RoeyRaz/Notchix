@@ -1,5 +1,5 @@
-//! Adaptive taskbar preview. Windows' taskbar stays available while Start,
-//! window grouping, tray and recovery behavior are being implemented.
+//! Partial-width glass taskbar. Explorer is restored whenever this optional
+//! taskbar is hidden or Notchix exits.
 use windows::Win32::Foundation::*;
 use windows::Win32::UI::WindowsAndMessaging::*;
 use windows::Win32::UI::Shell::{SHAppBarMessage, APPBARDATA, ABM_GETSTATE, ABM_SETSTATE, ABS_AUTOHIDE};
@@ -12,12 +12,20 @@ use std::path::Path;
 
 use crate::app::{App, Page};
 use crate::gfx::{Color, Gfx, Rect, Align};
+use crate::media::{Cmd, MediaState};
 use crate::store::{self, AppEntry};
 use crate::sys;
 
-const MAX_W: f32 = 680.0;
-const H: f32 = 54.0;
-const ICON_STEP: f32 = 52.0;
+const MAX_W: f32 = 840.0;
+const H: f32 = 62.0;
+const ICON_STEP: f32 = 48.0;
+const TASKBAR_BASE_W: f32 = 480.0;
+const MEDIA_W: f32 = 178.0;
+const SYSTEM_W: f32 = 168.0;
+const HOT_MEDIA: usize = usize::MAX - 1;
+const HOT_PREV: usize = usize::MAX - 2;
+const HOT_PLAY: usize = usize::MAX - 3;
+const HOT_NEXT: usize = usize::MAX - 4;
 // TrackMouseEvent posts this message; the windows crate exposes it under
 // Win32_UI_Controls, which this lightweight build does not otherwise need.
 const WM_MOUSELEAVE: u32 = 0x02A3;
@@ -29,6 +37,7 @@ pub struct Dock {
     running: Vec<bool>,
     extra: Vec<(String, HWND)>,
     extra_icons: HashMap<String, Option<ID2D1Bitmap>>,
+    foreground: Option<String>,
     hot: Option<usize>,
     tracking: bool,
     pub enabled: bool,
@@ -56,7 +65,7 @@ impl Dock {
         let gfx = Gfx::new((MAX_W * scale).ceil() as i32 + 4, (H * scale).ceil() as i32 + 4, scale).ok()?;
         let enabled = std::fs::read_to_string(store::data_dir().join("dock.txt"))
             .map(|v| v.trim() == "1").unwrap_or(false);
-        let mut dock = Self { hwnd, gfx, icons: Vec::new(), running: Vec::new(), extra: Vec::new(), extra_icons: HashMap::new(), hot: None, tracking: false, enabled,
+        let mut dock = Self { hwnd, gfx, icons: Vec::new(), running: Vec::new(), extra: Vec::new(), extra_icons: HashMap::new(), foreground: None, hot: None, tracking: false, enabled,
             glass: crate::glass_capture::GlassCapture::new(hwnd), glass_bitmap: None, capture_ready: false,
             previous_taskbar_state: None };
         dock.reload_icons(apps);
@@ -79,15 +88,33 @@ impl Dock {
     }
 
     fn icon_rect(i: usize) -> Rect {
-        Rect::new(104.0 + i as f32 * ICON_STEP, 7.0, 40.0, 40.0)
+        Rect::new(104.0 + i as f32 * ICON_STEP, 11.0, 40.0, 40.0)
     }
 
-    fn width(&self, apps: &[AppEntry]) -> f32 { 258.0 + (apps.len().min(7) + self.extra.len()) as f32 * ICON_STEP }
-    fn extra_slots(pins: usize) -> usize { (((MAX_W - 258.0) / ICON_STEP) as usize).saturating_sub(pins.min(7)).min(4) }
-    fn home_hit(x: f32, y: f32) -> bool { (7.0..49.0).contains(&x) && (4.0..H - 4.0).contains(&y) }
-    fn search_hit(x: f32, y: f32) -> bool { (54.0..96.0).contains(&x) && (4.0..H - 4.0).contains(&y) }
-    fn clock_hit(x: f32, y: f32, w: f32) -> bool { (w - 85.0..w - 5.0).contains(&x) && (4.0..H - 4.0).contains(&y) }
-    fn sound_hit(x: f32, y: f32, w: f32) -> bool { (w - 127.0..w - 85.0).contains(&x) && (4.0..H - 4.0).contains(&y) }
+    fn item_count(&self, apps: &[AppEntry]) -> usize { apps.len().min(7) + self.extra.len() }
+    fn width(&self, apps: &[AppEntry]) -> f32 { TASKBAR_BASE_W + self.item_count(apps) as f32 * ICON_STEP }
+    fn extra_slots(pins: usize) -> usize { (((MAX_W - TASKBAR_BASE_W) / ICON_STEP) as usize).saturating_sub(pins.min(7)).min(4) }
+    fn media_rect(&self, apps: &[AppEntry]) -> Rect {
+        Rect::new(112.0 + self.item_count(apps) as f32 * ICON_STEP, 6.0, MEDIA_W, H - 12.0)
+    }
+    fn system_rect(w: f32) -> Rect { Rect::new(w - SYSTEM_W - 5.0, 6.0, SYSTEM_W, H - 12.0) }
+    fn home_hit(x: f32, y: f32) -> bool { (7.0..49.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn search_hit(x: f32, y: f32) -> bool { (54.0..96.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn clock_hit(x: f32, y: f32, w: f32) -> bool { (w - 67.0..w - 4.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn sound_hit(x: f32, y: f32, w: f32) -> bool { (w - 164.0..w - 140.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn network_hit(x: f32, y: f32, w: f32) -> bool { (w - 139.0..w - 115.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn power_hit(x: f32, y: f32, w: f32) -> bool { (w - 114.0..w - 90.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+    fn notifications_hit(x: f32, y: f32, w: f32) -> bool { (w - 89.0..w - 65.0).contains(&x) && (6.0..H - 6.0).contains(&y) }
+
+    fn media_control(&self, x: f32, y: f32, apps: &[AppEntry]) -> Option<usize> {
+        let r = self.media_rect(apps);
+        if !(r.y..r.y + r.h).contains(&y) { return None; }
+        if (r.x + 114.0..r.x + 134.0).contains(&x) { Some(HOT_PREV) }
+        else if (r.x + 134.0..r.x + 157.0).contains(&x) { Some(HOT_PLAY) }
+        else if (r.x + 157.0..r.x + r.w).contains(&x) { Some(HOT_NEXT) }
+        else if (r.x..r.x + r.w).contains(&x) { Some(HOT_MEDIA) }
+        else { None }
+    }
 
     pub fn hit(&self, x: f32, y: f32, apps: &[AppEntry]) -> Option<usize> {
         if !(0.0..H).contains(&y) { return None; }
@@ -97,32 +124,45 @@ impl Dock {
         })
     }
 
+    fn hover_target(&self, x: f32, y: f32, apps: &[AppEntry], w: f32) -> Option<usize> {
+        self.hit(x, y, apps).or_else(|| self.media_control(x, y, apps)).or_else(|| {
+            if Self::sound_hit(x, y, w) { Some(usize::MAX - 5) }
+            else if Self::network_hit(x, y, w) { Some(usize::MAX - 6) }
+            else if Self::power_hit(x, y, w) { Some(usize::MAX - 7) }
+            else if Self::notifications_hit(x, y, w) { Some(usize::MAX - 8) }
+            else if Self::clock_hit(x, y, w) { Some(usize::MAX - 9) }
+            else { None }
+        })
+    }
+
     pub fn set_hot(&mut self, item: Option<usize>) -> bool {
         let changed = self.hot != item;
         self.hot = item;
         changed
     }
 
-    pub fn draw(&mut self, apps: &[AppEntry], mon: &RECT, scale: f32) {
-        let windows = visible_apps();
-        let foreground = foreground_exe();
-        self.running = apps.iter().take(7).map(|app| pin_exe(app).is_some_and(|name| windows.contains_key(&name))).collect();
-        let pinned: HashSet<String> = apps.iter().take(7).filter_map(pin_exe).collect();
-        let slots = Self::extra_slots(apps.len());
-        let mut extra: Vec<_> = windows.into_iter().filter(|(name, _)| !pinned.contains(name) && !matches!(name.as_str(),
-            "nock.exe" | "explorer.exe" | "searchhost.exe" | "startmenuexperiencehost.exe" | "shellexperiencehost.exe")) .collect();
-        extra.sort_by(|a, b| a.0.cmp(&b.0));
-        extra.truncate(slots);
-        self.extra = extra.iter().map(|(name, (hwnd, _))| (name.clone(), *hwnd)).collect();
-        self.extra_icons.retain(|name, _| self.extra.iter().any(|(visible, _)| visible == name));
-        for (name, (_, path)) in &extra {
-            if !self.extra_icons.contains_key(name) {
-                let bitmap = sys::file_icon(Path::new(path)).and_then(|icon| {
-                    let result = self.gfx.bitmap_from_hicon(icon).ok();
-                    unsafe { let _ = DestroyIcon(icon); }
-                    result
-                });
-                self.extra_icons.insert(name.clone(), bitmap);
+    pub fn draw(&mut self, apps: &[AppEntry], media: &MediaState, art: Option<&ID2D1Bitmap>, accent: Color, mon: &RECT, scale: f32, refresh_windows: bool) {
+        if refresh_windows {
+            let windows = visible_apps();
+            self.foreground = foreground_exe();
+            self.running = apps.iter().take(7).map(|app| pin_exe(app).is_some_and(|name| windows.contains_key(&name))).collect();
+            let pinned: HashSet<String> = apps.iter().take(7).filter_map(pin_exe).collect();
+            let slots = Self::extra_slots(apps.len());
+            let mut extra: Vec<_> = windows.into_iter().filter(|(name, _)| !pinned.contains(name) && !matches!(name.as_str(),
+                "nock.exe" | "explorer.exe" | "searchhost.exe" | "startmenuexperiencehost.exe" | "shellexperiencehost.exe")) .collect();
+            extra.sort_by(|a, b| a.0.cmp(&b.0));
+            extra.truncate(slots);
+            self.extra = extra.iter().map(|(name, (hwnd, _))| (name.clone(), *hwnd)).collect();
+            self.extra_icons.retain(|name, _| self.extra.iter().any(|(visible, _)| visible == name));
+            for (name, (_, path)) in &extra {
+                if !self.extra_icons.contains_key(name) {
+                    let bitmap = sys::file_icon(Path::new(path)).and_then(|icon| {
+                        let result = self.gfx.bitmap_from_hicon(icon).ok();
+                        unsafe { let _ = DestroyIcon(icon); }
+                        result
+                    });
+                    self.extra_icons.insert(name.clone(), bitmap);
+                }
             }
         }
         let w = self.width(apps);
@@ -130,28 +170,38 @@ impl Dock {
         let ph = (H * scale).round() as i32;
         if self.gfx.begin(pw, ph).is_err() { return; }
         let g = &self.gfx;
-        let (_, _, _, _, hh, mm, _, _) = sys::local_time();
+        let (_, month, day_num, _, hh, mm, _, _) = sys::local_time();
         let day = (7..18).contains(&hh);
-        let tint = if day { Color(0.74, 0.66, 0.94, 1.0) } else { Color(0.58, 0.64, 1.0, 1.0) };
-        let base = if day { Color(0.10, 0.10, 0.13, 0.52) } else { Color(0.045, 0.055, 0.085, 0.56) };
+        let tint = if day { Color(0.76, 0.67, 0.96, 1.0) } else { Color(0.61, 0.66, 1.0, 1.0) };
+        let base = if day { Color(0.10, 0.10, 0.13, 0.34) } else { Color(0.045, 0.055, 0.085, 0.38) };
         let shell = Rect::new(1.0, 1.0, w - 2.0, H - 2.0);
         if let Some(bitmap) = &self.glass_bitmap {
             g.draw_bitmap_mapped(bitmap, Rect::new(0.0, 0.0, w, H), shell, 19.0, 0.94);
         }
         g.fill_rrect(shell, 19.0, base);
-        g.fill_rrect(shell, 19.0, Color::white(0.035));
-        g.stroke_rrect(shell, 19.0, Color::white(0.31), 0.9);
-        g.stroke_rrect(Rect::new(shell.x + 1.0, shell.y + 1.0, shell.w - 2.0, shell.h - 2.0), 18.0, Color::white(0.055), 0.8);
-        g.line((shell.x + 22.0, 2.0), (shell.x + w - 22.0, 2.0), 0.8, Color::white(0.24));
-        g.fill_rrect(Rect::new(shell.x + 20.0, H - 2.5, shell.w - 40.0, 1.0), 0.5, tint.fade(0.19));
-        g.line((96.0, 13.0), (96.0, H - 13.0), 1.0, Color::white(0.13));
-        g.line((w - 137.0, 13.0), (w - 137.0, H - 13.0), 1.0, Color::white(0.13));
-        g.icon('\u{E80F}', Rect::new(18.0, 15.0, 24.0, 24.0), &g.fonts.icon14, Color::white(0.94));
-        g.icon('\u{E721}', Rect::new(63.0, 15.0, 24.0, 24.0), &g.fonts.icon14, Color::white(0.75));
+        g.fill_rrect(shell, 21.0, Color::white(0.025));
+        g.stroke_rrect(shell, 21.0, Color::white(0.34), 0.9);
+        g.stroke_rrect(Rect::new(shell.x + 1.0, shell.y + 1.0, shell.w - 2.0, shell.h - 2.0), 20.0, Color::white(0.065), 0.8);
+        g.line((shell.x + 24.0, 2.0), (shell.x + w - 24.0, 2.0), 0.8, Color::white(0.28));
+        g.fill_rrect(Rect::new(shell.x + 24.0, H - 2.5, shell.w - 48.0, 1.0), 0.5, tint.fade(0.24));
+        let media_r = self.media_rect(apps);
+        let system_r = Self::system_rect(w);
+        g.fill_rrect(Rect::new(6.0, 6.0, 91.0, H - 12.0), 17.0, Color::white(0.052));
+        if self.item_count(apps) > 0 {
+            g.fill_rrect(Rect::new(100.0, 6.0, self.item_count(apps) as f32 * ICON_STEP + 8.0, H - 12.0), 17.0, Color::white(0.035));
+        }
+        g.fill_rrect(media_r, 17.0, accent.fade(0.065));
+        g.stroke_rrect(media_r, 17.0, accent.fade(0.16), 0.65);
+        g.fill_rrect(system_r, 17.0, Color::white(0.045));
+        for x in [96.0, media_r.x - 5.0, system_r.x - 5.0] {
+            g.line((x, 15.0), (x, H - 15.0), 1.0, Color::white(0.15));
+        }
+        g.icon('\u{E80F}', Rect::new(18.0, 19.0, 24.0, 24.0), &g.fonts.icon14, Color::white(0.96));
+        g.icon('\u{E721}', Rect::new(63.0, 19.0, 24.0, 24.0), &g.fonts.icon14, Color::white(0.83));
         for (i, app) in apps.iter().take(7).enumerate() {
             let r = Self::icon_rect(i);
             let active = self.hot == Some(i);
-            let focused = pin_exe(app).is_some_and(|name| foreground.as_deref() == Some(name.as_str()));
+            let focused = pin_exe(app).is_some_and(|name| self.foreground.as_deref() == Some(name.as_str()));
             let draw_r = if active { Rect::new(r.x - 1.5, r.y - 3.0, r.w + 3.0, r.h + 3.0) } else { r };
             if active {
                 g.fill_rrect(Rect::new(draw_r.x - 2.0, draw_r.y - 1.0, draw_r.w + 4.0, draw_r.h + 2.0), 15.0, tint.fade(0.10));
@@ -178,7 +228,7 @@ impl Dock {
             let index = apps.len().min(7) + i;
             let r = Self::icon_rect(index);
             let active = self.hot == Some(index);
-            let focused = foreground.as_deref() == Some(name.as_str());
+            let focused = self.foreground.as_deref() == Some(name.as_str());
             if active {
                 g.fill_rrect(Rect::new(r.x - 2.0, r.y - 1.0, r.w + 4.0, r.h + 2.0), 15.0, tint.fade(0.10));
                 g.fill_rrect(r, 14.0, Color::white(0.12));
@@ -193,19 +243,57 @@ impl Dock {
             g.fill_rrect(Rect::new(r.cx() - if focused { 10.0 } else { 5.0 }, H - 9.0, if focused { 20.0 } else { 10.0 }, 2.5), 1.25,
                 if focused { Color::white(0.96) } else { tint.fade(0.96) });
         }
-        g.icon('\u{E767}', Rect::new(w - 119.0, 15.0, 25.0, 24.0), &g.fonts.icon14, Color::white(0.78));
-        g.text(&format!("{hh:02}:{mm:02}"), Rect::new(w - 83.0, 7.0, 76.0, 29.0), &g.fonts.body, Color::white(0.95), Align::Center);
-        g.text("AGENDA", Rect::new(w - 83.0, 34.0, 76.0, 13.0), &g.fonts.tiny, Color::white(0.55), Align::Center);
+        // Compact Now Playing lives between app switching and system tools.
+        if let Some(bmp) = art {
+            g.draw_bitmap(bmp, Rect::new(media_r.x + 7.0, media_r.y + 7.0, 36.0, 36.0), 9.0, 1.0);
+        } else {
+            g.fill_rrect(Rect::new(media_r.x + 7.0, media_r.y + 7.0, 36.0, 36.0), 9.0, Color::white(0.075));
+            g.icon('\u{E768}', Rect::new(media_r.x + 7.0, media_r.y + 7.0, 36.0, 36.0), &g.fonts.icon14, tint.fade(0.85));
+        }
+        let title = if media.has_track() { media.title.as_str() } else { "Nothing playing" };
+        let artist = if media.has_track() { media.artist.as_str() } else { "Open media" };
+        let text_x = media_r.x + 49.0;
+        g.text(title, Rect::new(text_x, media_r.y + 7.0, 63.0, 17.0), &g.fonts.tiny, Color::white(0.96), Align::Left);
+        g.text(artist, Rect::new(text_x, media_r.y + 23.0, 63.0, 16.0), &g.fonts.tiny, Color::white(0.70), Align::Left);
+        let (position, duration) = media.progress(sys::filetime_now());
+        if duration > 0.0 {
+            g.fill_rrect(Rect::new(text_x, media_r.y + 44.0, 63.0, 2.0), 1.0, Color::white(0.22));
+            let progress = (position / duration).clamp(0.0, 1.0) as f32;
+            g.fill_rrect(Rect::new(text_x, media_r.y + 44.0, (63.0 * progress).max(1.0), 2.0), 1.0, accent.fade(0.95));
+        }
+        let control_y = media_r.y + 15.0;
+        for (code, rect, hot) in [
+            ('\u{E892}', Rect::new(media_r.x + 113.0, control_y + 4.0, 20.0, 23.0), HOT_PREV),
+            (if media.playing { '\u{E769}' } else { '\u{E768}' }, Rect::new(media_r.x + 135.0, control_y, 24.0, 30.0), HOT_PLAY),
+            ('\u{E893}', Rect::new(media_r.x + 160.0, control_y + 4.0, 16.0, 23.0), HOT_NEXT),
+        ] {
+            if self.hot == Some(hot) { g.fill_rrect(Rect::new(rect.x - 1.0, rect.y - 1.0, rect.w + 2.0, rect.h + 2.0), 9.0, Color::white(0.12)); }
+            g.icon(code, rect, &g.fonts.icon14, if media.has_track() { Color::white(0.91) } else { Color::white(0.38) });
+        }
+        let iy = system_r.y + 13.0;
+        for (glyph, x, hot) in [
+            ('\u{E767}', w - 163.0, usize::MAX - 5),
+            ('\u{E701}', w - 138.0, usize::MAX - 6),
+            ('\u{E850}', w - 113.0, usize::MAX - 7),
+            ('\u{E7E7}', w - 88.0, usize::MAX - 8),
+        ] {
+            if self.hot == Some(hot) { g.fill_circle(x + 10.0, iy + 10.0, 12.0, tint.fade(0.15)); }
+            g.icon(glyph, Rect::new(x, iy, 20.0, 20.0), &g.fonts.icon14, Color::white(0.84));
+        }
+        g.line((w - 63.0, system_r.y + 8.0), (w - 63.0, system_r.y + system_r.h - 8.0), 1.0, Color::white(0.14));
+        if self.hot == Some(usize::MAX - 9) { g.fill_rrect(Rect::new(w - 61.0, system_r.y + 3.0, 56.0, system_r.h - 6.0), 12.0, tint.fade(0.12)); }
+        g.text(&format!("{hh:02}:{mm:02}"), Rect::new(w - 61.0, system_r.y + 7.0, 56.0, 20.0), &g.fonts.small, Color::white(0.96), Align::Center);
+        g.text(&format!("{month:02}/{day_num:02}"), Rect::new(w - 61.0, system_r.y + 26.0, 56.0, 14.0), &g.fonts.tiny, Color::white(0.68), Align::Center);
         let _ = self.gfx.end();
         let x = mon.left + ((mon.right - mon.left) - pw) / 2;
-        // Anchor to the bottom edge. Explorer auto-hides while this opt-in
-        // preview is visible, leaving wallpaper for real blur behind it.
+        // Anchor to the bottom edge. Explorer auto-hides while this optional
+        // replacement is visible, leaving wallpaper for live background blur.
         let y = mon.bottom - ph - (3.0 * scale).round() as i32;
         let _ = self.gfx.present(self.hwnd, x, y, pw, ph);
         if self.capture_ready { self.glass.request(x, y, pw, ph); }
     }
 
-    fn on_glass_frame(&mut self, apps: &[AppEntry], mon: &RECT, scale: f32) {
+    fn on_glass_frame(&mut self, apps: &[AppEntry], media: &MediaState, art: Option<&ID2D1Bitmap>, accent: Color, mon: &RECT, scale: f32) {
         let Some(frame) = self.glass.receive() else { return; };
         if !self.enabled || !self.capture_ready { return; }
         if let Some(pixels) = frame.pixels {
@@ -213,7 +301,7 @@ impl Dock {
             if ((frame.w as i32) * 2 - expected).abs() > 4 { return; }
             if let Ok(bitmap) = self.gfx.bitmap_from_bgra(frame.w, frame.h, &pixels) {
                 self.glass_bitmap = Some(bitmap);
-                self.draw(apps, mon, scale);
+                self.draw(apps, media, art, accent, mon, scale, false);
             }
         } else if frame.w == 0 && frame.h == 0 {
             self.glass_bitmap = None;
@@ -249,8 +337,8 @@ mod taskbar_layout_tests {
     #[test]
     fn running_apps_fit_inside_preview_width() {
         for pins in 0..=7 {
-            let width = 258.0 + (pins + Dock::extra_slots(pins)) as f32 * 52.0;
-            assert!(width <= 680.0);
+            let width = TASKBAR_BASE_W + (pins + Dock::extra_slots(pins)) as f32 * ICON_STEP;
+            assert!(width <= MAX_W);
         }
     }
 }
@@ -357,9 +445,21 @@ impl App {
             unsafe { let _ = ShowWindow(d.hwnd, if visible { SW_SHOWNOACTIVATE } else { SW_HIDE }); }
             if visible {
                 d.capture_ready = unsafe { SetWindowDisplayAffinity(d.hwnd, WDA_EXCLUDEFROMCAPTURE).is_ok() };
-                d.draw(&self.apps, &self.mon, self.scale);
+                d.draw(&self.apps, &self.mstate, self.art.as_ref(), self.accent, &self.mon, self.scale, true);
             } else {
                 d.glass_bitmap = None;
+            }
+        }
+    }
+
+    /// Redraw only the now-playing strip; don't enumerate every process window
+    /// on the one-second playback tick.
+    pub fn sync_dock_media(&mut self) {
+        let visible = self.dock.as_ref().is_some_and(|d| d.enabled)
+            && sys::fullscreen_kind(&[self.hwnd, self.dock.as_ref().map(|d| d.hwnd).unwrap_or_default()], &self.mon) == 0;
+        if visible {
+            if let Some(d) = &mut self.dock {
+                d.draw(&self.apps, &self.mstate, self.art.as_ref(), self.accent, &self.mon, self.scale, false);
             }
         }
     }
@@ -379,7 +479,9 @@ impl App {
     pub fn dock_msg(&mut self, hwnd: HWND, msg: u32, _wp: WPARAM, lp: LPARAM) -> LRESULT {
         match msg {
             crate::glass_capture::WM_GLASS_FRAME => {
-                if let Some(d) = &mut self.dock { d.on_glass_frame(&self.apps, &self.mon, self.scale); }
+                if let Some(d) = &mut self.dock {
+                    d.on_glass_frame(&self.apps, &self.mstate, self.art.as_ref(), self.accent, &self.mon, self.scale);
+                }
             }
             WM_MOUSEMOVE => {
                 let x = (lp.0 as u16 as i16) as f32 / self.scale;
@@ -394,14 +496,15 @@ impl App {
                         };
                         if unsafe { TrackMouseEvent(&mut track) }.is_ok() { d.tracking = true; }
                     }
-                    let next = d.hit(x, y, &self.apps);
-                    if d.set_hot(next) { d.draw(&self.apps, &self.mon, self.scale); }
+                    let width = d.width(&self.apps);
+                    let next = d.hover_target(x, y, &self.apps, width);
+                    if d.set_hot(next) { d.draw(&self.apps, &self.mstate, self.art.as_ref(), self.accent, &self.mon, self.scale, false); }
                 }
             }
             WM_MOUSELEAVE => {
                 if let Some(d) = &mut self.dock {
                     d.tracking = false;
-                    if d.set_hot(None) { d.draw(&self.apps, &self.mon, self.scale); }
+                    if d.set_hot(None) { d.draw(&self.apps, &self.mstate, self.art.as_ref(), self.accent, &self.mon, self.scale, false); }
                 }
             }
             WM_LBUTTONUP => {
@@ -415,14 +518,40 @@ impl App {
                     sys::open_start_or_search(true);
                     return LRESULT(0);
                 }
-                let width = self.dock.as_ref().map(|d| d.width(&self.apps)).unwrap_or(258.0);
+                let width = self.dock.as_ref().map(|d| d.width(&self.apps)).unwrap_or(TASKBAR_BASE_W);
                 if Dock::sound_hit(x, y, width) {
                     self.choose_audio_outputs();
+                    return LRESULT(0);
+                }
+                if Dock::network_hit(x, y, width) {
+                    sys::open("ms-settings:network-wifi", "");
+                    return LRESULT(0);
+                }
+                if Dock::power_hit(x, y, width) {
+                    sys::open("ms-settings:batterysaver", "");
+                    return LRESULT(0);
+                }
+                if Dock::notifications_hit(x, y, width) {
+                    sys::open_notification_center();
                     return LRESULT(0);
                 }
                 if Dock::clock_hit(x, y, width) {
                     self.set_expanded(true);
                     self.select_page(Page::Agenda);
+                    return LRESULT(0);
+                }
+                let media_control = self.dock.as_ref().and_then(|d| d.media_control(x, y, &self.apps));
+                if let Some(action) = media_control {
+                    match action {
+                        HOT_PREV => { let _ = self.media.tx.send(Cmd::Prev); }
+                        HOT_PLAY => { let _ = self.media.tx.send(Cmd::PlayPause); }
+                        HOT_NEXT => { let _ = self.media.tx.send(Cmd::Next); }
+                        HOT_MEDIA => {
+                            self.set_expanded(true);
+                            self.select_page(Page::Media);
+                        }
+                        _ => {}
+                    }
                     return LRESULT(0);
                 }
                 let index = self.dock.as_ref().and_then(|d| d.hit(x, y, &self.apps));

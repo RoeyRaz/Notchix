@@ -1294,6 +1294,7 @@ impl App {
         let need = !self.hidden
             && ((!self.expanded && self.cfg.day_line && self.mstate.playing && self.mstate.dur_ticks > 0)
                 || (self.expanded && self.mstate.playing)
+                || (self.dock.as_ref().is_some_and(|dock| dock.enabled) && self.mstate.playing && self.mstate.dur_ticks > 0)
                 || (self.expanded && self.page == Page::Typing && self.typing.started.is_some() && !self.typing.finished)
                 || self.timer_running());
         if need && !self.sec_on {
@@ -1570,6 +1571,9 @@ impl App {
                 // per second so the notch hides and returns automatically.
                 if self.cfg.fs_hide { self.on_foreground(); }
                 if self.expanded && self.page == Page::Media { self.spotify_vol = sys::spotify_volume(); }
+                if self.dock.as_ref().is_some_and(|dock| dock.enabled) && self.mstate.playing {
+                    self.sync_dock_media();
+                }
                 if self.timer_running() && self.timer_remaining_ms() <= 0 {
                     self.timer_done();
                 }
@@ -2868,6 +2872,9 @@ impl App {
                     self.mirror_bitmap = if frame.pixels.is_empty() { None } else {
                         self.gfx.bitmap_from_bgra(frame.width, frame.height, &frame.pixels).ok()
                     };
+                    // Camera frames arrive on the worker; explicitly present
+                    // each fresh frame instead of merely updating cached state.
+                    self.render();
                 }
             }
             Page::Home | Page::Stats => {
@@ -3324,6 +3331,9 @@ impl App {
         }
         if started {
             self.buddy_event(crate::buddy::BuddyEv::MusicStarted);
+        }
+        if self.dock.as_ref().is_some_and(|dock| dock.enabled) {
+            self.sync_dock_media();
         }
         self.retarget();
         self.sync_timers();

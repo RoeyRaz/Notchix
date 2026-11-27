@@ -23,13 +23,16 @@ fn state() -> &'static Mutex<Frame> {
 
 fn set_status(message: &str) {
     if let Ok(mut s) = state().lock() {
-        s.status = message.into();
+        if s.status != message {
+            s.status = message.into();
+            s.seq = s.seq.wrapping_add(1);
+        }
     }
 }
 
 pub fn latest_if_new(seq: u64) -> Option<Frame> {
     let guard = state().lock().ok()?;
-    if guard.seq != seq || guard.pixels.is_empty() { Some(guard.clone()) } else { None }
+    (guard.seq != seq).then(|| guard.clone())
 }
 
 pub fn status() -> String {

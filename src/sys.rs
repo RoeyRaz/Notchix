@@ -236,6 +236,27 @@ pub fn open_start_or_search(search: bool) {
     }
 }
 
+/// Open the Windows 11 notification center from the taskbar shortcut.
+pub fn open_notification_center() {
+    use windows::Win32::UI::Input::KeyboardAndMouse::*;
+    unsafe {
+        let key = |vk: u16, up: bool| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: VIRTUAL_KEY(vk),
+                    wScan: 0,
+                    dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let input = [key(0x5B, false), key(0x4E, false), key(0x4E, true), key(0x5B, true)];
+        SendInput(&input, std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
 /// Windows Volume Mixer level for Spotify.exe on the current default output.
 /// This is Spotify's per-app volume, not the system master volume or Spotify
 /// Connect volume on another device.

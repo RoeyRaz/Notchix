@@ -2,6 +2,8 @@
 
 ## Unreleased (v1.0 preparation)
 
+- Mirror capture now requests the webcam package capability, redraws the panel when camera frames arrive, and only refreshes when frame/status sequence changes. The taskbar has a new partial-width, connected-glass layout with pinned/running apps, real media controls and progress, quick system shortcuts, and a compact clock. Windows MSVC check and optimized build pass; this environment has no camera device, so live capture and the taskbar's on-device blur still need Windows hardware verification. App grouping, window previews, and the full tray remain unfinished release work.
+
 - Version 0.13.8.40 fixes Explorer file-operation detection for newer Windows 11 dialogs. The previous scanner rejected every top-level Explorer window whose class was not `#32770`; the screenshot's delete dialog can use another shell class even though its title contains the genuine `10% complete` value. Detection now checks the Explorer process, native progress controls, and the shell title without depending on that class. The parser test passes and the signed update was installed. A live sustained delete still needs confirmation.
 
 - Version 0.13.8.39 adds the next optional taskbar step: up to four visible, unpinned running applications can appear beside pinned apps, with their native icons and click-to-switch behavior. The rail stays bounded at 680 logical pixels and remains disabled by default. Spotify queue search was investigated but not shipped because the current integration has no OAuth/API client; the existing Notion action remains until that flow is implemented safely. League PresentMon overlay remains unverified and should not be called functional. 54 tests passed, 8 ignored; the signed update was installed.

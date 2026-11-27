@@ -3644,7 +3644,7 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         glass_accent(a).fade(ca),
     );
     g.text(
-        "Glass taskbar",
+        "Notchix taskbar",
         Rect::new(62.0, 230.0, 180.0, 26.0),
         &g.fonts.small,
         T1.fade(ca),
@@ -3652,7 +3652,7 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
     );
     g.text(
         if enabled {
-            "On · Windows taskbar auto-hides"
+            "On · compact taskbar active"
         } else {
             "Off · Windows taskbar stays visible"
         },

@@ -8,11 +8,17 @@ These are visual concepts, not screenshots of a working build.
 ## Recommended direction
 
 Use the night concept's connected sections and the day concept's quieter
-material. The bar is a full taskbar at the screen edge, never a floating app
-dock. Its neutral glass samples the background; purple marks focus, running
-apps, and small interactions. Album art colour appears in song text and media
-controls. Keep the top island independent so music and transfers remain primary
-there without duplicating every detail along the bottom.
+material. Notchix's direction is a partial-width bar centered at the bottom
+edge, with connected glass sections for Start/search, pinned and running apps,
+Now Playing, system shortcuts, and time. Its neutral glass samples the
+background; purple marks focus, running apps, and small interactions. Album art
+colour appears in song text and media controls. Keep the top island independent
+so music and transfers remain primary there without duplicating every detail
+along the bottom.
+
+The current bar is an early usable shell, not a finished taskbar replacement:
+it still needs grouped windows, hover previews, right-click window actions,
+keyboard navigation, and the complete notification/tray experience below.
 
 ## First usable release
 

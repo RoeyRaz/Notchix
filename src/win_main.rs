@@ -466,7 +466,7 @@ fn on_tray(hwnd: HWND, a: &mut App, lp: LPARAM) {
         let glass = if a.glass { MF_CHECKED } else { MF_UNCHECKED };
         let _ = AppendMenuW(menu, MF_STRING | glass, 119, w!("Translucent glass notch"));
         let taskbar_preview = if a.dock.as_ref().is_some_and(|d| d.enabled) { MF_CHECKED } else { MF_UNCHECKED };
-        let _ = AppendMenuW(menu, MF_STRING | taskbar_preview, 120, w!("Adaptive taskbar preview"));
+        let _ = AppendMenuW(menu, MF_STRING | taskbar_preview, 120, w!("Notchix glass taskbar"));
         let game_checked = if a.game_strip.as_ref().is_some_and(|s| s.is_enabled()) { MF_CHECKED } else { MF_UNCHECKED };
         let _ = AppendMenuW(menu, MF_STRING | game_checked, 122, w!("League game strip (PresentMon, experimental)"));
         let _ = AppendMenuW(menu, MF_STRING, 121, w!("Windows Do Not Disturb settings..."));
