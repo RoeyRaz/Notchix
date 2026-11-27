@@ -2,6 +2,8 @@
 
 ## Unreleased (v1.0 preparation)
 
+- Spotify volume now keeps a quiet placeholder in Home when Windows has not created Spotify's app audio session; the Media player's unavailable state no longer collides with its source label. The control stays non-interactive until Windows exposes a real Spotify volume value.
+
 - Mirror capture now requests the webcam package capability, redraws the panel when camera frames arrive, and only refreshes when frame/status sequence changes. The taskbar has a new partial-width, connected-glass layout with pinned/running apps, real media controls and progress, quick system shortcuts, and a compact clock. Windows MSVC check and optimized build pass; this environment has no camera device, so live capture and the taskbar's on-device blur still need Windows hardware verification. App grouping, window previews, and the full tray remain unfinished release work.
 
 - Version 0.13.8.40 fixes Explorer file-operation detection for newer Windows 11 dialogs. The previous scanner rejected every top-level Explorer window whose class was not `#32770`; the screenshot's delete dialog can use another shell class even though its title contains the genuine `10% complete` value. Detection now checks the Explorer process, native progress controls, and the shell title without depending on that class. The parser test passes and the signed update was installed. A live sustained delete still needs confirmation.

@@ -2068,6 +2068,28 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             T2.fade(ca),
             Align::Right,
         );
+    } else {
+        // Keep the control's position stable while Spotify has no Windows
+        // audio session. The subdued track makes the unavailable state clear
+        // without inventing a level or presenting a draggable control.
+        g.icon(
+            '\u{E767}',
+            Rect::new(129.0, 113.0, 21.0, 21.0),
+            &f.icon14,
+            T3.fade(ca),
+        );
+        g.fill_rrect(
+            Rect::new(157.0, 122.0, 144.0, 3.0),
+            1.5,
+            Color::white(0.18 * ca),
+        );
+        g.text(
+            "—",
+            Rect::new(307.0, 115.0, 37.0, 18.0),
+            &f.tiny,
+            T3.fade(ca),
+            Align::Right,
+        );
     }
     let weather = crate::weather::snapshot();
     g.text(
@@ -2930,13 +2952,6 @@ fn page_media(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             Rect::new(tx + 24.0, 97.0, 150.0, 3.0),
             1.5,
             Color::white(0.18 * ca),
-        );
-        g.text(
-            "Unavailable",
-            Rect::new(tx + 183.0, 91.0, 100.0, 16.0),
-            &f.tiny,
-            T3.fade(ca),
-            Align::Left,
         );
     }
     g.text(
