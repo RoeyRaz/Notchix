@@ -16,6 +16,8 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
           $v = "${{ github.ref_name }}".TrimStart('v')
+          $cargoVersion = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"$').Matches.Groups[1].Value
+          if ($cargoVersion -ne $v) { throw "Release tag $v does not match Cargo.toml version $cargoVersion" }
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$v" installer\notchix.iss
       - name: Name the no-install version clearly
         shell: pwsh

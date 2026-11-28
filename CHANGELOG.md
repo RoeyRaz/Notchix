@@ -1,12 +1,15 @@
 # Changelog
 
+## 0.13.9
+
+- Removed the experimental Notchix taskbar replacement and unverified in-game FPS overlay; Windows Explorer remains in control. Added one-time recovery for taskbar auto-hide state left by an older preview and removed an unused tray action.
+- Added a local CSV/TSV quick profile in Tools, with bounded file, row and column sizes, missing-cell counts and numeric summaries. Data is processed locally and is not uploaded or retained.
+- Rebranded the installer, setup guide and release-facing materials for Notchix while preserving Nock's MIT license and attribution. Kept `%APPDATA%\Nock` for settings continuity.
+- Removed personal machine paths and device-name defaults from current release files. Updated the Notchix update check and added deterministic screenshots of the current UI with demo-only content.
+- Validated Windows MSVC tests and release build, installer build and install/uninstall smoke test, plus Linux build, tests and package smoke test in GitHub Actions.
+
 ## Unreleased (v1.0 preparation)
 
-- Finalization pass: removed the experimental Notchix taskbar replacement and game FPS overlay, added one-time Explorer taskbar-state recovery, removed the dead Start-menu action, and restored the update check against Notchix releases.
-- Added local CSV/TSV quick profiling with a 32 MB, 250,000-row, 128-column cap; numeric summaries and missing-cell counts; CSV quoting support; and focused tests. Parsing runs away from UI thread. No upload or data persistence.
-- Rebranded MSIX identity and installer metadata to Notchix, kept `%APPDATA%\Nock` for settings continuity, and redirected updates to the Notchix repository. Rebuilt setup workflow and guide; first install from the old private MSIX identity may require a one-time uninstall.
-- Removed user-specific package and filesystem names from current release metadata, renamed the launcher/add-on/build scripts, and updated install/release file names. Kept the upstream Nock license and attribution.
-- Replaced the inherited Nock landing page with a Notchix-branded page, removed unverified performance claims and links to upstream download endpoints, and retained a clear Nock credit.
 
 - Added an in-notch drag-and-drop converter panel with native format chips, a custom progress animation, and output beside the original file. FFmpeg and FFprobe are needed for conversion; measured progress appears only when duration is available. Conversion currently covers supported audio, video, and image formats, not arbitrary files. Corrected Shelf handling for multiple drops and made “Add to Shelf” use the converted output after a successful conversion. No Windows file picker is used in the drop flow. Windows target check, release build, and existing tests pass (54 passed, 8 ignored). A local FFmpeg image-to-JPEG smoke check preserved its source; the live drag/drop panel still needs a visual check.
 

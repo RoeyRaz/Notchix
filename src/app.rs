@@ -4329,6 +4329,7 @@ mod preview {
         let dir = std::env::var("PREVIEW_DIR").expect("PREVIEW_DIR");
         let scale = 2.0f32;
         let mut a = App::new(HWND::default(), scale).expect("app");
+        a.windows_listener.permission = crate::win_notifications::Permission::Allowed;
         a.expanded = true;
         a.sw = Spring::new(EXP_W);
         a.sh = Spring::new(EXP_H);
@@ -4340,15 +4341,39 @@ mod preview {
         a.clips = vec!["https://example.com/some/long/link/to/read/later".into(), "Meeting at 11:00 in room 4".into(), "cargo build --release".into()];
         a.pins = vec!["hello@example.com".into()];
         a.mstate.has_session = true;
-        a.mstate.title = "lofi beats to study and relax".into();
-        a.mstate.artist = "lofi radio".into();
+        a.mstate.title = "Soft Focus".into();
+        a.mstate.artist = "Notchix Radio".into();
         a.mstate.playing = true;
         a.system_notices = vec![
             crate::win_notifications::Notice { app: "WhatsApp".into(), title: "Incoming video call".into(), body: "From Alex".into(), received: Instant::now(), historical: false },
             crate::win_notifications::Notice { app: "Discord".into(), title: "Download complete".into(), body: "Your file is ready".into(), received: Instant::now(), historical: false },
             crate::win_notifications::Notice { app: "Media Encoder".into(), title: "Export complete".into(), body: "Project render finished".into(), received: Instant::now(), historical: false },
         ];
-        a.mstate.dur_ticks = 62 * 60 * 10_000_000 / 60;
+        a.mstate.app = "Spotify".into();
+        a.mstate.pos_ticks = 23 * 10_000_000;
+        a.mstate.dur_ticks = 62 * 10_000_000;
+        a.mstate.can_seek = true;
+        a.mstate.can_prev = true;
+        a.mstate.can_next = true;
+        a.has_volume = true;
+        a.volume = 0.62;
+        a.spotify_vol = Some(0.62);
+        a.lyrics_enabled = true;
+        let demo_cover = std::fs::read("docs/screenshots/demo-cover.png").expect("demo cover");
+        let (cover, cover_colour) = a.gfx.decode_image(&demo_cover).expect("decode demo cover");
+        a.art = Some(cover);
+        a.accent = boost(cover_colour);
+        *crate::lyrics::STATE.lock().unwrap() = Some(crate::lyrics::ResultData {
+            key: crate::lyrics::key(&a.mstate.title, &a.mstate.artist),
+            lines: vec![
+                crate::lyrics::Line { at: Some(12.0), text: "Soft lights across the room".into() },
+                crate::lyrics::Line { at: Some(22.0), text: "The quiet settles in".into() },
+                crate::lyrics::Line { at: Some(32.0), text: "A little space to breathe".into() },
+                crate::lyrics::Line { at: Some(42.0), text: "Let the evening roll".into() },
+            ],
+            synced: true,
+            ..Default::default()
+        });
         a.radios.wifi = Some(true);
         a.radios.bluetooth = Some(false);
         a.stats = Some((23, 61));

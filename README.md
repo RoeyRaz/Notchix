@@ -11,7 +11,19 @@
 <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
 </p>
 
-Download the latest Windows installer from [GitHub Releases](../../releases/latest). The installer is per-user, adds a Start menu shortcut, and opens a setup guide. Portable builds are also published. See [Setup guide](docs/SETUP_GUIDE.html) and [release checklist](ROADMAP_1_0.md).
+Download the latest Windows installer from [GitHub Releases](https://github.com/RoeyRaz/Notchix/releases/latest). The installer is per-user, adds a Start menu shortcut, and opens a setup guide. Portable builds are also published. See [Setup guide](docs/SETUP_GUIDE.html) and [release checklist](ROADMAP_1_0.md).
+
+## Screenshots
+
+These are crisp renders from Notchix's current UI code using illustrative demo content. They are not captures of a user's desktop, and the example notifications and song are not live data.
+
+| Home | Media |
+|:--:|:--:|
+| ![Notchix Home with media controls and glanceable cards](docs/screenshots/home.png) | ![Notchix Media page with playback, queue and lyrics entry](docs/screenshots/media.png) |
+
+| Tools | Activity |
+|:--:|:--:|
+| ![Notchix Tools page with capture, audio and utilities](docs/screenshots/tools.png) | ![Notchix Activity page with illustrative notification cards](docs/screenshots/activity.png) |
 
 ## Included
 
@@ -36,7 +48,7 @@ cargo test --target x86_64-pc-windows-msvc
 For the installer, install [Inno Setup 6](https://jrsoftware.org/isinfo.php), then run:
 
 ```powershell
-ISCC.exe /DMyAppVersion=0.13.0 installer\notchix.iss
+ISCC.exe /DMyAppVersion=0.13.9 installer\notchix.iss
 ```
 
 See [AGENTS.md](AGENTS.md) for project conventions and the validation checklist. See [CHANGELOG.md](CHANGELOG.md) for the project history.

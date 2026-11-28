@@ -1,6 +1,6 @@
 [package]
 name = "nock"
-version = "0.13.0"
+version = "0.13.9"
 edition = "2021"
 description = "Notchix, a lightweight native desktop island for Windows"
 
