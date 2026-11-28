@@ -55,6 +55,10 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
+        // A previous experimental build could hide Explorer's taskbar. Restore
+        // its saved state only after this process owns the single-instance lock.
+        legacy_taskbar::restore_if_needed();
+
         // Keep the existing Start with Windows preference working after an
         // update extracted to a different folder. Never opt in automatically.
         sys::repair_autostart_path();
@@ -111,21 +115,6 @@ fn run() -> Result<()> {
             Some(hinst),
             None,
         )?;
-        // Optional dock remains a separate non-activating, layered window.
-        // Windows' real taskbar is untouched and can always be restored.
-        let dock_hwnd = CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
-            class,
-            w!(""),
-            WS_POPUP,
-            0, 0, 10, 10,
-            None, None, Some(hinst), None,
-        )?;
-        let game_strip_hwnd = CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
-            class, w!(""), WS_POPUP,
-            0, 0, 10, 10, None, None, Some(hinst), None,
-        )?;
         let pop_hwnd = CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
             class,
@@ -179,8 +168,6 @@ fn run() -> Result<()> {
             sys::sync_start_menu(a.cfg.start_menu);
             let mon_w = a.mon.right - a.mon.left;
             a.bar = bar::Bar::new(bar_hwnd, mon_w, a.scale);
-            a.dock = dock::Dock::new(dock_hwnd, a.scale, &a.apps);
-            a.game_strip = game_strip::GameStrip::new(game_strip_hwnd, a.scale);
             a.pop = pop::Pop::new(pop_hwnd, a.scale);
         }
 
@@ -213,7 +200,6 @@ fn run() -> Result<()> {
             a.on_foreground();
             a.update_reserve();
             a.sync_bar();
-            a.sync_dock();
             a.load_brightness_once();
             a.on_media(); // pick up anything the media thread already found
             a.render();
@@ -250,16 +236,16 @@ fn on_update(hwnd: HWND, code: usize) {
             show("Couldn't check for updates. Are you online?", MB_OK | MB_ICONINFORMATION);
         }
         1 => {
-            show(&format!("The upstream Nock release is {cur}. Notchix updates are installed with INSTALL-OR-UPDATE-NOCK.cmd."), MB_OK | MB_ICONINFORMATION);
+            show(&format!("Notchix {cur} is up to date."), MB_OK | MB_ICONINFORMATION);
         }
         _ if sys::installed_by_setup() => {
-            let q = format!("Upstream Nock {} is available. Installing it will replace this Notchix executable.\n\nContinue with the upstream installer?", latest.trim_start_matches('v'));
+            let q = format!("Notchix {} is available. Download and install the update?", latest.trim_start_matches('v'));
             if show(&q, MB_YESNO | MB_ICONQUESTION) == IDYES {
                 sys::install_update(&latest);
             }
         }
         _ => {
-            let q = format!("Upstream Nock {} is available. Updating here will replace this Notchix executable.\n\nYes: install upstream Nock. No: open its release page. Cancel: keep Notchix.", latest.trim_start_matches('v'));
+            let q = format!("Notchix {} is available.\n\nYes: replace this portable app. No: open the Notchix release page. Cancel: keep this version.", latest.trim_start_matches('v'));
             match show(&q, MB_YESNOCANCEL | MB_ICONQUESTION) {
                 IDYES => sys::update_portable(&latest),
                 IDNO => sys::open_releases(),
@@ -292,9 +278,6 @@ unsafe extern "system" fn win_event(
     if let Some(a) = app() {
         sys::watch_foreground_location(a.hwnd);
         a.on_foreground();
-        // Foreground changes are already event driven; refresh dock running
-        // marks here rather than adding a process polling timer.
-        if a.dock.as_ref().is_some_and(|d| d.enabled) { a.sync_dock(); }
     }
 }
 
@@ -305,12 +288,6 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
     if a.is_bar(hwnd) {
         return a.bar_msg(hwnd, msg, wp, lp);
     }
-    if a.is_dock(hwnd) {
-        return a.dock_msg(hwnd, msg, wp, lp);
-    }
-    if a.game_strip.as_ref().is_some_and(|strip| strip.hwnd == hwnd) {
-        return DefWindowProcW(hwnd, msg, wp, lp);
-    }
     if a.is_pop(hwnd) {
         return a.pop_msg(hwnd, msg, wp, lp);
     }
@@ -319,6 +296,8 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
     }
     match msg {
         app::WM_NATIVE_NOTICE => a.on_native_notices(),
+        app::WM_CONVERTER_UPDATE => a.on_converter_update(),
+        app::WM_DATA_PROFILE => a.on_data_profile_ready(),
         WM_TIMER => a.on_timer(wp.0),
         WM_MOUSEMOVE => a.on_mouse_move(lo(lp), hi(lp)),
         WM_MOUSELEAVE => a.on_mouse_leave(),
@@ -370,7 +349,6 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
         WM_DISPLAYCHANGE => a.on_display_change(sys::scale_of(sys::pick_monitor(a.cfg.monitor))),
         WM_TRAY => on_tray(hwnd, a, lp),
         WM_DESTROY => {
-            a.restore_native_taskbar();
             sys::reserve_top(hwnd, &RECT::default(), 0);
             PostQuitMessage(0)
         }
@@ -465,10 +443,6 @@ fn on_tray(hwnd: HWND, a: &mut App, lp: LPARAM) {
         let _ = AppendMenuW(menu, MF_STRING, 118, w!("Choose audio outputs..."));
         let glass = if a.glass { MF_CHECKED } else { MF_UNCHECKED };
         let _ = AppendMenuW(menu, MF_STRING | glass, 119, w!("Translucent glass notch"));
-        let taskbar_preview = if a.dock.as_ref().is_some_and(|d| d.enabled) { MF_CHECKED } else { MF_UNCHECKED };
-        let _ = AppendMenuW(menu, MF_STRING | taskbar_preview, 120, w!("Notchix glass taskbar"));
-        let game_checked = if a.game_strip.as_ref().is_some_and(|s| s.is_enabled()) { MF_CHECKED } else { MF_UNCHECKED };
-        let _ = AppendMenuW(menu, MF_STRING | game_checked, 122, w!("League game strip (PresentMon, experimental)"));
         let _ = AppendMenuW(menu, MF_STRING, 121, w!("Windows Do Not Disturb settings..."));
         let fh = if a.cfg.fs_hide { MF_CHECKED } else { MF_UNCHECKED };
         let _ = AppendMenuW(menu, MF_STRING | fh, 16, w!("Hide in full-screen apps"));
@@ -579,6 +553,8 @@ fn on_tray(hwnd: HWND, a: &mut App, lp: LPARAM) {
         let _ = AppendMenuW(menu, MF_STRING, 3, w!("Reload pinned apps"));
         let _ = AppendMenuW(menu, MF_STRING, 4, w!("Open settings folder"));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
+        let _ = AppendMenuW(menu, MF_STRING, 15, w!("Check for Notchix updates..."));
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, 9, w!("Quit"));
 
         let mut pt = POINT::default();
@@ -604,8 +580,6 @@ fn on_tray(hwnd: HWND, a: &mut App, lp: LPARAM) {
             ),
             3 => a.reload_apps(),
             5 => a.toggle_tucked(),
-            120 => a.toggle_dock(),
-            122 => a.toggle_game_strip(),
             121 => sys::open("ms-settings:notifications", ""),
             11 => a.toggle_clock24(),
             117 => a.toggle_hover_expand(),
@@ -618,11 +592,6 @@ fn on_tray(hwnd: HWND, a: &mut App, lp: LPARAM) {
             51 => a.toggle_smart_hide(),
             18 => a.toggle_smart(),
             19 => a.toggle_smart_sound(),
-            14 => {
-                a.cfg.start_menu = !a.cfg.start_menu;
-                store::save_config(&a.cfg);
-                sys::sync_start_menu(a.cfg.start_menu);
-            }
             4 => sys::open(&store::data_dir().to_string_lossy(), ""),
             15 => sys::check_update(hwnd.0 as isize),
             20..=29 => a.set_buddy((cmd.0 - 20) as u8),

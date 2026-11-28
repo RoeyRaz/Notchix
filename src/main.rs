@@ -11,11 +11,7 @@ mod spotify;
 #[cfg(windows)]
 mod bar;
 #[cfg(windows)]
-mod dock;
-#[cfg(windows)]
-mod presentmon;
-#[cfg(windows)]
-mod game_strip;
+mod legacy_taskbar;
 #[cfg(windows)]
 mod buddy;
 mod cal;
@@ -37,6 +33,10 @@ mod media;
 mod mirror;
 #[cfg(windows)]
 mod transfer;
+#[cfg(windows)]
+mod converter;
+#[cfg(windows)]
+mod data_analysis;
 #[cfg(windows)]
 mod explorer_copy;
 #[cfg(windows)]

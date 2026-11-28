@@ -2339,13 +2339,13 @@ mod tests {
         ];
         p.timer_task = Some("Linux port".into());
         p.track = Some(Track { title: "Song of the Day".into(), artist: "The Band".into(), app: "Player".into(), playing: true, can_seek: true, can_prev: true, can_next: true, pos_s: 83.0, dur_s: 215.0, ..Track::default() });
-        p.shelf = vec!["/etc".into(), "/etc/hostname".into(), "/home/akhil/report-final-v2.pdf".into()];
+        p.shelf = vec!["/etc".into(), "/etc/hostname".into(), "/home/user/report-final-v2.pdf".into()];
         p.pins = vec!["ssh dev@example.com".into()];
         p.clips = vec![
             "https://example.com/some/long/link/to/read/later".into(),
             "Meeting at 11:00 in room 4".into(),
             "cargo build --release".into(),
-            "/home/akhil/notes.txt".into(),
+            "/home/user/notes.txt".into(),
             "akhil@example.com".into(),
             "one more".into(),
         ];

@@ -6,25 +6,25 @@ param([switch]$SkipCargoBuild)
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$buildScript = Join-Path $PSScriptRoot 'Build-NockMsix.ps1'
+$buildScript = Join-Path $PSScriptRoot 'Build-NotchixMsix.ps1'
 
 Write-Host 'Notchix: Windows notification integration' -ForegroundColor Cyan
-Write-Host 'A portable nock.exe cannot obtain the required notification listener identity.'
+Write-Host 'A portable Notchix executable cannot obtain the required notification listener identity.'
 Write-Host 'This script creates a local developer package and verifies its signing certificate.'
-Write-Host 'Exit any running Nock from its tray icon first to avoid competing notches.'
+Write-Host 'Exit any running Notchix from its tray icon first to avoid competing islands.'
 
 & $buildScript -SkipCargoBuild:$SkipCargoBuild
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'MSIX build failed.' }
 
 $package = Get-ChildItem (Join-Path $root 'dist') -Filter 'Notchix-*-x64.msix' |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1 -ExpandProperty FullName
-$certificate = Join-Path $root 'dist\Nock-Custom-Developer.cer'
+$certificate = Join-Path $root 'dist\Notchix-Developer.cer'
 if (-not (Test-Path $package) -or -not (Test-Path $certificate)) {
     throw 'Expected signed MSIX or generated certificate was not found.'
 }
 
 Write-Host ''
-Write-Host 'The following certificate was created by your local Nock build:' -ForegroundColor Yellow
+Write-Host 'The following certificate was created by your local Notchix build:' -ForegroundColor Yellow
 Get-PfxCertificate -FilePath $certificate | Select-Object Subject, Thumbprint, NotAfter | Format-List
 $thumbprint = (Get-PfxCertificate -FilePath $certificate).Thumbprint
 $trusted = Get-Item ("Cert:\LocalMachine\TrustedPeople\" + $thumbprint) -ErrorAction SilentlyContinue
@@ -42,10 +42,14 @@ Add-AppxPackage -Path $package
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $existingRun = (Get-ItemProperty -Path $runKey -Name Nock -ErrorAction SilentlyContinue).Nock
 if ($existingRun) {
-    Set-ItemProperty -Path $runKey -Name Nock -Value 'cmd.exe /c start "" "shell:AppsFolder\Roey.NockCustom_pnky3m006n9h6!Nock"'
+    $family = (Get-AppxPackage -Name 'Notchix.Desktop' | Select-Object -First 1 -ExpandProperty PackageFamilyName)
+    if ($family) {
+        $startupCommand = 'cmd.exe /c start "" "shell:AppsFolder\{0}!Nock"' -f $family
+        Set-ItemProperty -Path $runKey -Name Nock -Value $startupCommand
+    }
 }
 Write-Host ''
 Write-Host 'Installed Notchix.' -ForegroundColor Green
 Write-Host 'Launch Notchix from Start, open Activity, and select Allow access.'
 Write-Host 'Leave Windows and WhatsApp notifications ON until a real message appears in Activity.'
-Write-Host 'Do not launch target\release\nock.exe for notification integration.'
+Write-Host 'Do not launch the portable executable for notification integration.'

@@ -93,6 +93,7 @@ fn page_accent(a: &App, page: Page) -> Color {
         Page::Controls => Color(0.65, 0.72, 1.0, 1.0),
         Page::Stats => Color(0.36, 0.83, 0.79, 1.0),
         Page::Power => Color(1.0, 0.62, 0.62, 1.0),
+        Page::DataAnalysis => Color(0.35, 0.78, 0.88, 1.0),
         _ => glass_accent(a),
     }
 }
@@ -1689,6 +1690,7 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             | Page::Weather
             | Page::Tasks
             | Page::Assistant
+            | Page::DataAnalysis
     ) {
         let back = Rect::new(18.0, 8.0, 80.0, 28.0);
         hits.push(Hit {
@@ -1699,10 +1701,11 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         g.text("‹ Back", back, &f.small, T1.fade(ca), Align::Center);
         let title = match a.page {
             Page::Assistant => "Quick Spotify queue",
+            Page::DataAnalysis => "CSV Quick Profile",
             Page::Processes => "Task Manager",
             Page::WindowManager => "Window Layouts",
             Page::Mirror => "Mirror",
-            Page::ShelfPreview => "Quick Look",
+            Page::ShelfPreview => if a.converter_open { "File Converter" } else { "Quick Look" },
             Page::Activity => "Activity Center",
             Page::Weather => "Weather",
             Page::Tasks => "Focus & Tasks",
@@ -1727,6 +1730,7 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             Page::Tasks => page_tasks(a, ca, hits),
             Page::Typing => page_typing(a, ca, hits),
             Page::Assistant => page_assistant(a, ca, hits),
+            Page::DataAnalysis => page_data_analysis(a, ca),
             _ => page_calculator(a, ca, hits),
         });
         for h in &mut hits[start..] {
@@ -1822,12 +1826,13 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         Page::Controls => "TOOLS",
         Page::Stats => "STATS",
         Page::Power => "POWER",
+        Page::DataAnalysis => "ANALYSIS",
         Page::Tasks => "FOCUS",
         Page::Calculator => "CALCULATOR",
         Page::Typing => "TYPING",
         Page::WindowManager => "LAYOUTS",
         Page::Mirror => "MIRROR",
-        Page::ShelfPreview => "QUICK LOOK",
+        Page::ShelfPreview => if a.converter_open { "CONVERT" } else { "QUICK LOOK" },
         Page::Processes => "PROCESSES",
         Page::Game => "GAMES",
         Page::Weather => "WEATHER",
@@ -1866,6 +1871,7 @@ fn draw_expanded(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         Page::Processes => page_processes(a, ca, hits),
         Page::Home => page_home(a, ca, hits),
         Page::Assistant => page_assistant(a, ca, hits),
+        Page::DataAnalysis => page_data_analysis(a, ca),
         Page::Game => {
             let (ox, oy) = ((EXP_W - crate::game::W) / 2.0, 14.0);
             if a.hub.is_playing() {
@@ -2234,8 +2240,8 @@ fn page_home(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             '\u{E823}',
         ),
     ];
-    let dock = Rect::new(18.0, 153.0, 564.0, 48.0);
-    glass_card(a, dock, 18.0, ca, false);
+    let shortcut_rail = Rect::new(18.0, 153.0, 564.0, 48.0);
+    glass_card(a, shortcut_rail, 18.0, ca, false);
     for (i, (title, _sub, page, glyph)) in shortcuts.iter().enumerate() {
         let r = Rect::new(18.0 + i as f32 * 141.0, 153.0, 141.0, 48.0);
         let act = Act::HomeLink(*page);
@@ -3619,11 +3625,13 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
                 "Glass: Off"
             },
         ),
+        (Act::MediaConvert, '\u{E8B7}', "File converter"),
+        (Act::DataProfileOpen, '\u{E9D2}', "CSV quick profile"),
     ];
     for (i, (act, glyph, label)) in commands.iter().enumerate() {
         let col = (i % 2) as f32;
         let row = (i / 2) as f32;
-        let r = Rect::new(222.0 + col * 181.0, 68.0 + row * 39.0, 173.0, 35.0);
+        let r = Rect::new(222.0 + col * 181.0, 68.0 + row * 30.0, 173.0, 28.0);
         hits.push(Hit { r, act: *act });
         glass_card(a, r, 10.0, ca, hot(a, *act));
         g.fill_rrect(
@@ -3633,65 +3641,18 @@ fn page_controls(a: &App, ca: f32, hits: &mut Vec<Hit>) {
         );
         g.icon(
             *glyph,
-            Rect::new(r.x + 9.0, r.y + 7.0, 25.0, 25.0),
+            Rect::new(r.x + 9.0, r.y + 4.0, 21.0, 21.0),
             &g.fonts.icon14,
             glass_accent(a).fade(ca),
         );
         g.text(
             label,
-            Rect::new(r.x + 38.0, r.y + 3.0, r.w - 43.0, 33.0),
+            Rect::new(r.x + 38.0, r.y + 1.0, r.w - 43.0, 26.0),
             &g.fonts.small,
             T1.fade(ca),
             Align::Left,
         );
     }
-    let taskbar = Rect::new(20.0, 228.0, 560.0, 30.0);
-    let enabled = a.dock.as_ref().is_some_and(|dock| dock.enabled);
-    hits.push(Hit {
-        r: taskbar,
-        act: Act::DockToggle,
-    });
-    glass_card(a, taskbar, 12.0, ca, hot(a, Act::DockToggle));
-    g.icon(
-        '\u{E8F2}',
-        Rect::new(32.0, 232.0, 22.0, 22.0),
-        &g.fonts.icon14,
-        glass_accent(a).fade(ca),
-    );
-    g.text(
-        "Notchix taskbar",
-        Rect::new(62.0, 230.0, 180.0, 26.0),
-        &g.fonts.small,
-        T1.fade(ca),
-        Align::Left,
-    );
-    g.text(
-        if enabled {
-            "On · compact taskbar active"
-        } else {
-            "Off · Windows taskbar stays visible"
-        },
-        Rect::new(246.0, 230.0, 278.0, 26.0),
-        &g.fonts.tiny,
-        T2.fade(ca),
-        Align::Right,
-    );
-    let track = Rect::new(535.0, 235.0, 31.0, 16.0);
-    g.fill_rrect(
-        track,
-        8.0,
-        if enabled {
-            glass_accent(a).fade(0.78 * ca)
-        } else {
-            Color::white(0.15 * ca)
-        },
-    );
-    g.fill_circle(
-        if enabled { 557.0 } else { 543.0 },
-        243.0,
-        5.5,
-        Color::white(ca),
-    );
 }
 
 /// Nock-local notification history plus real live work already tracked by Nock.
@@ -4265,6 +4226,45 @@ fn stat_tile(
             2.5,
             col.fade(ca),
         );
+    }
+}
+
+fn page_data_analysis(a: &App, ca: f32) {
+    let g = &a.gfx;
+    let f = &g.fonts;
+    let top = Rect::new(20.0, 8.0, 560.0, 54.0);
+    glass_card(a, top, 16.0, ca, false);
+    g.icon('\u{E9D2}', Rect::new(34.0, 20.0, 26.0, 26.0), &f.icon14, Color(0.35, 0.78, 0.88, ca));
+    g.text("Local CSV / TSV profile", Rect::new(72.0, 14.0, 340.0, 22.0), &f.body, T1.fade(ca), Align::Left);
+    g.text("Choose a table to count rows, missing cells, and numeric ranges.", Rect::new(72.0, 36.0, 470.0, 17.0), &f.tiny, T2.fade(ca), Align::Left);
+    match a.data_profile.as_ref() {
+        None => {
+            g.text("No file selected", Rect::new(28.0, 95.0, 540.0, 36.0), &f.title, T1.fade(ca), Align::Center);
+            g.text("Open Tools → CSV quick profile, then choose a .csv or .tsv file.", Rect::new(32.0, 138.0, 536.0, 30.0), &f.small, T2.fade(ca), Align::Center);
+            g.text("Runs on this PC. Input is capped at 32 MB and 250,000 rows.", Rect::new(32.0, 178.0, 536.0, 24.0), &f.tiny, T3.fade(ca), Align::Center);
+        }
+        Some(Err(message)) => {
+            g.text(message, Rect::new(28.0, 106.0, 544.0, 60.0), &f.body, T2.fade(ca), Align::Center);
+        }
+        Some(Ok(profile)) => {
+            g.text(&profile.file_name, Rect::new(26.0, 72.0, 548.0, 24.0), &f.body, T1.fade(ca), Align::Left);
+            let summary = format!("{} rows     {} columns     {} empty cells", profile.rows, profile.columns, profile.missing_cells);
+            g.text(&summary, Rect::new(26.0, 99.0, 548.0, 22.0), &f.small, Color(0.35, 0.78, 0.88, ca), Align::Left);
+            if profile.numeric.is_empty() {
+                g.text("No fully numeric columns found.", Rect::new(26.0, 140.0, 548.0, 22.0), &f.small, T2.fade(ca), Align::Left);
+            } else {
+                for (i, col) in profile.numeric.iter().take(4).enumerate() {
+                    let y = 137.0 + i as f32 * 40.0;
+                    let label = format!("{} · {} values · {} missing", col.name, col.count, col.missing);
+                    let vals = format!("min {:.3}     mean {:.3}     max {:.3}", col.min, col.mean, col.max);
+                    g.text(&label, Rect::new(26.0, y, 548.0, 19.0), &f.small, T1.fade(ca), Align::Left);
+                    g.text(&vals, Rect::new(26.0, y + 18.0, 548.0, 18.0), &f.tiny, T2.fade(ca), Align::Left);
+                }
+                if profile.numeric.len() > 4 {
+                    g.text(&format!("+ {} more numeric columns", profile.numeric.len() - 4), Rect::new(26.0, 302.0, 548.0, 18.0), &f.tiny, T3.fade(ca), Align::Left);
+                }
+            }
+        }
     }
 }
 
@@ -5370,6 +5370,10 @@ fn page_shelf(a: &App, ca: f32, hits: &mut Vec<Hit>) {
 }
 
 fn page_shelf_preview(a: &App, ca: f32, hits: &mut Vec<Hit>) {
+    if a.converter_open {
+        page_file_converter(a, ca, hits);
+        return;
+    }
     let g = &a.gfx;
     let f = &g.fonts;
     let name = std::path::Path::new(&a.shelf_preview_path)
@@ -5457,6 +5461,146 @@ fn page_shelf_preview(a: &App, ca: f32, hits: &mut Vec<Hit>) {
             .fade(ca),
         );
         g.text(label, r, &f.small, T1.fade(ca), Align::Center);
+    }
+}
+
+fn page_file_converter(a: &App, ca: f32, hits: &mut Vec<Hit>) {
+    let g = &a.gfx;
+    let f = &g.fonts;
+    let accent = glass_accent(a);
+    let drag = a.shelf_hover;
+
+    if a.converter_input.is_empty() {
+        let card = Rect::new(22.0, 8.0, EXP_W - 44.0, 204.0);
+        g.fill_rrect(card, 22.0, Color::white(0.035 * ca));
+        g.stroke_rrect(card, 22.0, accent.fade((if drag { 0.70 } else { 0.25 }) * ca), if drag { 1.6 } else { 0.9 });
+        let cx = card.cx();
+        let cy = 74.0;
+        let pulse = (a.fx_phase * 0.6).sin() * 0.5 + 0.5;
+        g.fill_circle(cx, cy, 34.0 + if drag { pulse * 5.0 } else { 0.0 }, accent.fade((if drag { 0.17 } else { 0.09 }) * ca));
+        g.stroke_rrect(Rect::new(cx - 23.0, cy - 23.0, 46.0, 46.0), 15.0, accent.fade(0.75 * ca), 1.0);
+        g.icon('\u{E8A5}', Rect::new(cx - 14.0, cy - 15.0, 28.0, 30.0), &f.icon22, T1.fade(ca));
+        g.text(if drag { "Release to add your file" } else { "Drop a file to begin" }, Rect::new(48.0, 119.0, EXP_W - 96.0, 27.0), &f.title, T1.fade(ca), Align::Center);
+        g.text("Choose a format here. Your original stays untouched.", Rect::new(48.0, 149.0, EXP_W - 96.0, 20.0), &f.small, T2.fade(ca), Align::Center);
+        g.text("Audio · video · images   •   FFmpeg required", Rect::new(48.0, 178.0, EXP_W - 96.0, 17.0), &f.tiny, T3.fade(ca), Align::Center);
+        return;
+    }
+
+    let path = std::path::Path::new(&a.converter_input);
+    let filename = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "Dropped file".into());
+    let size = std::fs::metadata(path).ok().map(|m| {
+        let bytes = m.len();
+        if bytes >= 1_073_741_824 { format!("{:.1} GB", bytes as f64 / 1_073_741_824.0) }
+        else if bytes >= 1_048_576 { format!("{:.1} MB", bytes as f64 / 1_048_576.0) }
+        else if bytes >= 1024 { format!("{:.0} KB", bytes as f64 / 1024.0) }
+        else { format!("{bytes} bytes") }
+    }).unwrap_or_else(|| "Source file".into());
+
+    let source = Rect::new(22.0, 4.0, EXP_W - 44.0, 51.0);
+    glass_card(a, source, 15.0, ca, false);
+    g.fill_rrect(Rect::new(31.0, 13.0, 34.0, 34.0), 11.0, accent.fade(0.18 * ca));
+    g.icon('\u{E8A5}', Rect::new(37.0, 19.0, 22.0, 22.0), &f.icon14, accent.fade(ca));
+    g.text(&filename, Rect::new(76.0, 9.0, 365.0, 21.0), &f.body, T1.fade(ca), Align::Left);
+    g.text(&size, Rect::new(76.0, 31.0, 365.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
+    if !a.converter_busy {
+        let remove = Rect::new(EXP_W - 65.0, 12.0, 34.0, 34.0);
+        hits.push(Hit { r: remove, act: Act::SubpageBack });
+        g.fill_circle(remove.cx(), remove.cy(), 16.0, Color::white(0.055 * ca));
+        g.icon('\u{E711}', Rect::new(remove.x + 7.0, remove.y + 7.0, 20.0, 20.0), &f.icon14, T2.fade(ca));
+    }
+
+    if !crate::converter::is_supported(path) {
+        let card = Rect::new(22.0, 66.0, EXP_W - 44.0, 135.0);
+        g.fill_rrect(card, 18.0, Color::white(0.035 * ca));
+        g.stroke_rrect(card, 18.0, Color::white(0.11 * ca), 0.8);
+        g.fill_circle(card.cx(), 99.0, 20.0, Color::rgb(242, 174, 104).fade(0.15 * ca));
+        g.icon('\u{E7BA}', Rect::new(card.cx() - 11.0, 88.0, 22.0, 22.0), &f.icon14, Color::rgb(255, 207, 148).fade(ca));
+        g.text("This file type is not supported yet", Rect::new(42.0, 124.0, EXP_W - 84.0, 25.0), &f.body, T1.fade(ca), Align::Center);
+        g.text("The converter handles audio, video, and images through FFmpeg.", Rect::new(42.0, 151.0, EXP_W - 84.0, 20.0), &f.tiny, T2.fade(ca), Align::Center);
+        let shelf = Rect::new(EXP_W * 0.5 - 77.0, 220.0, 154.0, 30.0);
+        hits.push(Hit { r: shelf, act: Act::ConverterToShelf });
+        g.fill_rrect(shelf, 14.0, Color::white(0.055 * ca));
+        g.stroke_rrect(shelf, 14.0, Color::white(0.13 * ca), 0.8);
+        g.icon('\u{E8B7}', Rect::new(shelf.x + 10.0, shelf.y + 6.0, 18.0, 18.0), &f.icon14, T2.fade(ca));
+        g.text("Add to Shelf", Rect::new(shelf.x + 33.0, shelf.y + 2.0, shelf.w - 39.0, 26.0), &f.small, T2.fade(ca), Align::Center);
+        return;
+    }
+
+    g.text("OUTPUT TYPE", Rect::new(25.0, 63.0, 120.0, 16.0), &f.tiny, T3.fade(ca), Align::Left);
+    let group_w = 108.0;
+    let group_gap = 7.0;
+    let group_x = (EXP_W - (group_w * 3.0 + group_gap * 2.0)) / 2.0;
+    for (i, label) in crate::converter::GROUPS.iter().enumerate() {
+        let rect = Rect::new(group_x + i as f32 * (group_w + group_gap), 59.0, group_w, 27.0);
+        let selected = a.converter_group == i as u8;
+        hits.push(Hit { r: rect, act: Act::ConverterCategory(i as u8) });
+        g.fill_rrect(rect, 13.0, if selected { accent.fade(0.76 * ca) } else { Color::white(0.055 * ca) });
+        g.stroke_rrect(rect, 13.0, if selected { accent.fade(0.72 * ca) } else { Color::white(0.11 * ca) }, 0.8);
+        g.text(label, rect, &f.small, if selected { Color::rgb(24, 20, 31).fade(ca) } else { T2.fade(ca) }, Align::Center);
+    }
+
+    let formats = crate::converter::formats(a.converter_group);
+    let n = formats.len().max(1);
+    let gap = 7.0;
+    let chip_w = ((EXP_W - 52.0 - gap * (n as f32 - 1.0)) / n as f32).min(94.0);
+    let row_w = chip_w * n as f32 + gap * (n as f32 - 1.0);
+    for (i, (label, _)) in formats.iter().enumerate() {
+        let rect = Rect::new((EXP_W - row_w) / 2.0 + i as f32 * (chip_w + gap), 94.0, chip_w, 31.0);
+        let selected = a.converter_format == i;
+        hits.push(Hit { r: rect, act: Act::ConverterFormat(i) });
+        g.fill_rrect(rect, 11.0, if selected { accent.fade(0.29 * ca) } else { Color::white(0.042 * ca) });
+        g.stroke_rrect(rect, 11.0, if selected { accent.fade(0.76 * ca) } else { Color::white(0.12 * ca) }, if selected { 1.1 } else { 0.7 });
+        g.text(label, rect, &f.small, (if selected { T1 } else { T2 }).fade(ca), Align::Center);
+    }
+
+    let extension = formats.get(a.converter_format).map(|(_, ext)| *ext).unwrap_or("mp4");
+    let output_name = std::path::Path::new(&a.converter_output).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| format!("converted.{extension}"));
+    let output = Rect::new(22.0, 137.0, EXP_W - 44.0, 36.0);
+    g.fill_rrect(output, 13.0, Color(0.018, 0.022, 0.033, 0.49 * ca));
+    g.text("SAVES BESIDE THE ORIGINAL", Rect::new(34.0, 141.0, 180.0, 13.0), &f.tiny, T3.fade(ca), Align::Left);
+    g.text(&output_name, Rect::new(34.0, 154.0, output.w - 48.0, 16.0), &f.small, T1.fade(ca), Align::Left);
+
+    let rail = Rect::new(30.0, 184.0, EXP_W - 60.0, 3.0);
+    g.fill_rrect(rail, 2.0, Color::white(0.105 * ca));
+    if a.converter_busy {
+        if let Some(progress) = a.converter_progress {
+            g.fill_rrect(Rect::new(rail.x, rail.y, rail.w * progress.clamp(0.0, 1.0), rail.h), 2.0, accent.fade(ca));
+            let x = rail.x + rail.w * progress.clamp(0.0, 1.0);
+            g.fill_circle(x, rail.cy(), 5.0, Color::white(0.92 * ca));
+            g.text(&format!("Converting · {}%", (progress * 100.0).round() as u32), Rect::new(30.0, 190.0, 270.0, 18.0), &f.small, T1.fade(ca), Align::Left);
+        } else {
+            let travel = (a.fx_phase * 0.34).sin() * 0.5 + 0.5;
+            let dot_x = rail.x + rail.w * travel;
+            g.fill_rrect(Rect::new((dot_x - 31.0).clamp(rail.x, rail.x + rail.w - 62.0), rail.y, 62.0, rail.h), 2.0, accent.fade(0.94 * ca));
+            g.fill_circle(dot_x, rail.cy(), 5.0, Color::white(0.92 * ca));
+            g.text("Converting · preparing progress…", Rect::new(30.0, 190.0, 300.0, 18.0), &f.small, T1.fade(ca), Align::Left);
+        }
+    } else if let Some(Ok(_)) = &a.converter_result {
+        g.fill_rrect(rail, 2.0, accent.fade(ca));
+        g.text("Conversion complete", Rect::new(30.0, 190.0, 280.0, 18.0), &f.small, accent.fade(ca), Align::Left);
+    } else if let Some(Err(error)) = &a.converter_result {
+        g.text(error, Rect::new(30.0, 190.0, 420.0, 18.0), &f.tiny, Color::rgb(255, 154, 165).fade(ca), Align::Left);
+    } else {
+        g.text("Ready when you are", Rect::new(30.0, 190.0, 280.0, 18.0), &f.small, T2.fade(ca), Align::Left);
+    }
+
+    let shelf = Rect::new(24.0, 220.0, 154.0, 30.0);
+    hits.push(Hit { r: shelf, act: Act::ConverterToShelf });
+    g.fill_rrect(shelf, 14.0, Color::white(0.055 * ca));
+    g.stroke_rrect(shelf, 14.0, Color::white(0.13 * ca), 0.8);
+    g.icon('\u{E8B7}', Rect::new(shelf.x + 10.0, shelf.y + 6.0, 18.0, 18.0), &f.icon14, T2.fade(ca));
+    g.text("Add to Shelf", Rect::new(shelf.x + 33.0, shelf.y + 2.0, shelf.w - 39.0, 26.0), &f.small, T2.fade(ca), Align::Center);
+
+    if let Some(Ok(_)) = &a.converter_result {
+        let reveal = Rect::new(EXP_W - 184.0, 220.0, 160.0, 30.0);
+        hits.push(Hit { r: reveal, act: Act::ConverterReveal });
+        g.fill_rrect(reveal, 14.0, accent.fade(0.77 * ca));
+        g.text("Show converted file", reveal, &f.small, Color::rgb(26, 22, 34).fade(ca), Align::Center);
+    } else {
+        let convert = Rect::new(EXP_W - 184.0, 220.0, 160.0, 30.0);
+        if !a.converter_busy { hits.push(Hit { r: convert, act: Act::ConverterStart }); }
+        g.fill_rrect(convert, 14.0, accent.fade(if a.converter_busy { 0.22 } else { 0.84 } * ca));
+        g.text(if a.converter_busy { "Converting…" } else { "Convert file" }, convert, &f.small, (if a.converter_busy { T3 } else { Color::rgb(26, 22, 34) }).fade(ca), Align::Center);
     }
 }
 

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping! Nock targets Windows 10/11 and is plain Rust against the `windows` crate.
+Thanks for helping! Notchix targets Windows 11 first, with a smaller Linux preview. The Windows app is native Rust using the `windows` crate.
 
 ## Build and check
 
@@ -10,7 +10,7 @@ cargo test
 cargo clippy
 ```
 
-`cargo test` also checks that every scene script is well formed, that every window message number is unique, and that the games' basic rules work. The installer is built from `installer\nock.iss` with [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`ISCC.exe /DMyAppVersion=1.2.3 installer\nock.iss`); CI builds it on every push and does a silent install/uninstall check.
+`cargo test` also checks that every scene script is well formed, that every window message number is unique, and that the games' basic rules work. The installer is built from `installer\notchix.iss` with [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`ISCC.exe /DMyAppVersion=1.2.3 installer\notchix.iss`); CI builds it on every push and does a silent install/uninstall check.
 
 ## Linux
 
@@ -53,7 +53,7 @@ It writes raw BGRA files named `panel_*.raw` (a 4-byte width, a 4-byte height, t
 
 ## Guidelines
 
-- **Stay light.** No polling loops, no new long-lived background threads, no heavy dependencies. Idle CPU should stay at zero. Anything animated should only tick while it is visible.
+- **Stay light.** Avoid unnecessary polling, permanent workers and heavy dependencies. Anything animated should tick only while visible; profile before making performance claims.
 - Keep it native: Win32 / Direct2D / WinRT only, no webview.
 - Window messages (`WM_APP + n`) must stay unique; the test above will tell you if you reuse one.
 - Original art only: please do not add copyrighted images, sounds or character designs to the repository.

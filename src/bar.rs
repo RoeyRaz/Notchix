@@ -145,9 +145,6 @@ impl App {
             if let Some(b) = &self.bar {
                 let _ = SetWindowPos(b.hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, flags);
             }
-            if let Some(d) = &self.dock {
-                if d.enabled { let _ = SetWindowPos(d.hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, flags); }
-            }
             if let Some(st) = &self.stage {
                 if st.active {
                     let _ = SetWindowPos(st.hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, flags);

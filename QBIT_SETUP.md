@@ -1,6 +1,6 @@
 # qBittorrent live progress setup
 
-Nock can show *real* torrent progress with qBittorrent 5.2.0 or later.
+Notchix can show *real* torrent progress with qBittorrent 5.2.0 or later.
 Without setup, the previous activity indicator remains available.
 
 1. In qBittorrent, open **Tools > Options > Web UI**.
@@ -13,12 +13,13 @@ Without setup, the previous activity indicator remains available.
    environment variables for your account**, select **New** under User
    variables, and paste the key there. You can remove this variable any time.
 5. If you chose another WebUI port, also set `NOCK_QBIT_PORT` to its number.
-6. Fully exit and reopen Nock so it can read the new variables. You may have
+6. Fully exit and reopen Notchix so it can read the new variables. You may have
    to sign out of Windows once if Nock is launched by an older startup process.
 
 **Important:** Windows user environment variables are not encrypted secret
 storage. The API key should be treated as a credential, only used with the
-local-only WebUI, and rotated if exposed. Nock never sends it off your PC.
+local-only WebUI, and rotated if exposed. Notchix sends it only to the local
+qBittorrent Web UI configured on your PC.
 
 qBittorrent versions below 5.2 lack API-key authentication. They continue to
 use the existing disk-activity indicator until a separate authenticated

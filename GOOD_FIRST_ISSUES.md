@@ -7,11 +7,11 @@ Ideas that are well contained and don't need deep knowledge of the code. Pick on
 - **New scene.** Scenes are keyframe scripts in `src/scene.rs` (`script()`); the unit tests check they are well formed.
 - **New game or a new mode.** The arcade lives in `src/games.rs`: each game has `step`, `click` and `draw`, a tile on the hub, and a saved best score. Mouse only, and short rounds work best.
 - **A new Controls shortcut.** The Controls tab is a grid of tiles linking to Windows Settings pages (`SETTINGS_PAGES` in `src/app.rs`, tiles in `page_controls` in `src/ui.rs`).
-- **Second monitor support.** Nock uses the primary monitor only.
+- **Multi-monitor polish.** Notchix can target another monitor; improve how it handles display changes and scale differences.
 - **Signal strength icon** for Wi-Fi in the bar (instead of the plain icon).
 - **Bluetooth battery levels** in the dropdown where devices report them.
 - **Forget a saved Wi-Fi network / unpair a Bluetooth device** from the dropdowns.
 - **Non-English Wi-Fi parsing.** Network info comes from `netsh` output parsed in English.
-- **Publish to winget or Scoop.** A small manifest pointing at the installer in each release.
+- **Publish to Scoop.** Add a manifest for Notchix's own release assets.
 - **Code signing.** Set up signing for the installer and exe (for example with SignPath or Azure Trusted Signing) to get rid of the SmartScreen warning.
 - **Real sounds for the games.** They use simple system beeps today.

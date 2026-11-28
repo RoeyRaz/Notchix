@@ -1,19 +1,22 @@
 # Notchix branding and publication notes
 
-Notchix is Roey's customized derivative of [Nock by Akhilesh Varute](https://github.com/Akhilesh-Varute/Nock). Describe the project as a fork or derivative with original Notchix changes, not as an independently written codebase. Retain the upstream `LICENSE` copyright and MIT permission notice in source and distributions. The [MIT license](https://opensource.org/license/mit) permits modification and distribution subject to retaining those notices.
+Notchix is an independently branded derivative based on [Nock by Akhilesh Varute](https://github.com/Akhilesh-Varute/Nock). Preserve the upstream MIT license and copyright notice in source and distributions. Keep the original author's credit visible in the README and included LICENSE; Notchix changes are credited to Notchix contributors.
 
-## Current visual direction
+## Identity and compatibility
 
-- Distinct open-orbit icon with a dark center and small status light, rather than the upstream notch/equalizer tile. The new icon was developed for this fork; `assets/notchix_icon256.png`, `assets/notchix_icon.png`, and `assets/notchix.ico` are the shipping files.
-- Neutral graphite glass with a restrained tint sampled from current media artwork. No new polling, window, image decode, or animation timer was added for the tint.
-- Visible product name is Notchix. The MSIX package identity `Roey.NockCustom`, executable `nock.exe`, `%APPDATA%\Nock` data folder, and developer certificate subject remain temporarily unchanged to preserve installed updates and settings. These internal identifiers do not define the public brand.
+- Visible product, Start menu, installer and package identity: **Notchix**.
+- MSIX identity: `Notchix.Desktop`, publisher `CN=Notchix Developer`.
+- Executable filename remains `nock.exe` for compatibility with existing scripts and file associations.
+- User data remains in `%APPDATA%\Nock` so current settings survive the visual and installer rebrand.
+- GitHub repository URL identifies the hosting account. Public contributor identity is governed by the repository's Git history and GitHub account settings; renaming source files does not rewrite past commits or remove that attribution.
 
-## Before a public GitHub release
+## Release checks
 
-1. Finish Windows 11 runtime and resource profiling in `ROADMAP_1_0.md`. Capture current Notchix screenshots and replace the upstream demo, release links, badges, and feature claims in `README.md`.
-2. Audit the provenance and redistribution rights of every retained image, font, sound, mascot and demo asset; replace anything uncertain. Keep upstream authorship clear in the README, `LICENSE`, and package notices.
-3. Point the updater at a Notchix release repository and add a tested update path. The current menu is explicitly labeled **Check upstream Nock releases** because its existing code still downloads upstream Nock.
-4. Decide whether to migrate the MSIX identity, executable name, data directory and legacy `Nock.lnk` shortcut. That is an installation and settings migration, not a visual-only change; test update and rollback before doing it.
-5. Create a Git repository from a traceable source tree. This supplied source folder has no `.git` history, so record the upstream commit or release used as the base before publishing.
+1. Build and test with Windows MSVC; build the Inno Setup installer and MSIX locally.
+2. Verify install, update, start with Windows, notification access and uninstall. A package identity change from the prior private build may require uninstalling that old package once; keep `%APPDATA%\Nock`.
+3. Confirm the Notchix updater points to this repository and downloads the Notchix filenames.
+4. Scan tracked files and generated release assets for tokens, private calendar links, machine-local paths, personal package identity and test credentials.
+5. Check the included setup guide, MIT notice, bundled icon, mascot, fonts, sound and other assets for accurate attribution and redistribution terms.
+6. Profile idle and active CPU/RAM on Windows 11 hardware before making resource claims.
 
-Suggested repository summary: **Notchix is a lightweight Windows desktop island built on Nock by Akhilesh Varute. This fork adds its own branding, glass visuals and productivity integrations while retaining the upstream MIT license and credit.**
+The GitHub account name in repository URLs is necessarily visible while that account owns the repository. To change it, change the repository owner or transfer the repository; source cleanup alone cannot change that hosting identity.

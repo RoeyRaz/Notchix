@@ -23,10 +23,10 @@ New-Item -ItemType Directory -Force $stage, (Join-Path $stage 'Assets') | Out-Nu
 Copy-Item $exe (Join-Path $stage 'nock.exe') -Force
 Copy-Item (Join-Path $PSScriptRoot 'AppxManifest.xml') (Join-Path $stage 'AppxManifest.xml') -Force
 # Every installed update needs a strictly higher MSIX version. Derive the
-# next revision automatically so Roey never has to edit three version strings.
+# next revision automatically without manual version synchronization.
 [xml]$manifest = Get-Content (Join-Path $stage 'AppxManifest.xml') -Raw
 $version = [version]$manifest.Package.Identity.Version
-$installed = Get-AppxPackage -Name 'Roey.NockCustom' -ErrorAction SilentlyContinue | Select-Object -First 1
+$installed = Get-AppxPackage -Name 'Notchix.Desktop' -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($installed -and $installed.Version -ge $version) {
     $old = [version]$installed.Version
     if ($old.Revision -ge 65535) { throw 'MSIX revision exhausted. Increase the base version in AppxManifest.xml.' }
@@ -53,17 +53,17 @@ try {
 $package = Join-Path $output "Notchix-$($version.ToString(4))-x64.msix"
 & $makeappx.FullName pack /d $stage /p $package /o
 if ($LASTEXITCODE -ne 0) { throw 'MSIX packaging failed.' }
-$publisher = 'CN=Roey Nock Development'
+$publisher = 'CN=Notchix Developer'
 $cert = Get-ChildItem Cert:\CurrentUser\My |
     Where-Object { $_.Subject -eq $publisher -and $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date) } |
     Sort-Object NotAfter -Descending | Select-Object -First 1
 if (-not $cert) {
     $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $publisher -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy NonExportable
 }
-$cerPath = Join-Path $output 'Nock-Custom-Developer.cer'
+$cerPath = Join-Path $output 'Notchix-Developer.cer'
 Export-Certificate -Cert $cert -FilePath $cerPath -Force | Out-Null
 & $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint /s My $package
 if ($LASTEXITCODE -ne 0) { throw 'MSIX signing failed.' }
 Write-Host "Built: $package"
 Write-Host "Certificate: $cerPath"
-Write-Host 'Next: inspect and trust your own certificate, then install the MSIX. See ROEY_CUSTOM_BUILD.md.'
+Write-Host 'Next: inspect and trust your local certificate, then install the MSIX. See NOTCHIX_BUILD.md.'

@@ -2,7 +2,7 @@
 //! single UI thread, driven purely by window messages and a few short-lived
 //! timers. When nothing is animating the process sits in GetMessage().
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
@@ -55,6 +55,8 @@ pub const WM_ASSISTANT_DONE: u32 = 0x8000 + 41;
 pub const WM_SPOTIFY_DONE: u32 = 0x8000 + 44;
 /// Posted by the background Windows notification listener when new items arrive.
 pub const WM_NATIVE_NOTICE: u32 = 0x8000 + 24;
+pub const WM_CONVERTER_UPDATE: u32 = 0x8000 + 45;
+pub const WM_DATA_PROFILE: u32 = 0x8000 + 46;
 
 /// Seconds a page cross-fade takes.
 const PAGE_FADE_S: f32 = 0.24;
@@ -131,7 +133,6 @@ const T_MASCOT: usize = 26;
 const T_TRANSFERS: usize = 27;
 const T_TRANSFER_ANIM: usize = 28;
 const T_GLASS: usize = 29;
-const T_GAME_STRIP: usize = 30;
 /// How long a peek lasts, seconds.
 const PEEK_SECS: f32 = 1.5;
 
@@ -148,6 +149,7 @@ pub enum Page {
     Game,
     Stats,
     Power,
+    DataAnalysis,
     Processes,
     Calculator,
     Typing,
@@ -213,7 +215,13 @@ pub enum Act {
     SpotifySearch,
     SpotifyQueue(usize),
     SpotifyDisconnect,
-    DockToggle,
+    MediaConvert,
+    DataProfileOpen,
+    ConverterCategory(u8),
+    ConverterFormat(usize),
+    ConverterStart,
+    ConverterToShelf,
+    ConverterReveal,
     ActivityRequestAccess,
     ActivityTestPreview,
     ActivityPrivacyToggle,
@@ -388,8 +396,6 @@ pub struct App {
     peek: bool,
     fs_peekable: bool,
     pub bar: Option<crate::bar::Bar>,
-    pub dock: Option<crate::dock::Dock>,
-    pub game_strip: Option<crate::game_strip::GameStrip>,
     pub pop: Option<crate::pop::Pop>,
     pub page: Page,
     pub eq_phase: f32,
@@ -478,12 +484,24 @@ pub struct App {
     pub shelf_preview_info: String,
     pub shelf_preview_text: Vec<String>,
     pub shelf_preview_bitmap: Option<ID2D1Bitmap>,
+    pub converter_open: bool,
+    pub converter_input: String,
+    pub converter_output: String,
+    pub converter_group: u8,
+    pub converter_format: usize,
+    pub converter_progress: Option<f32>,
+    pub converter_result: Option<std::result::Result<String, String>>,
+    pub converter_busy: bool,
+    converter_shared: Arc<Mutex<crate::converter::Snapshot>>,
+    pub data_profile: Option<std::result::Result<crate::data_analysis::Profile, String>>,
+    data_profile_result: Arc<Mutex<Option<std::result::Result<crate::data_analysis::Profile, String>>>>,
     pub mirror_bitmap: Option<ID2D1Bitmap>,
     pub mirror_seq: u64,
     /// a file is being dragged over the notch
     pub shelf_hover: bool,
     /// the drag itself opened the panel, so closing it again if nothing is dropped
     shelf_auto_open: bool,
+    shelf_return_page: Option<Page>,
     /// pressed a shelf file: (index, x, y); becomes a drag once the pointer moves
     shelf_press: Option<(usize, f32, f32)>,
     /// our own drag-out is running (no auto-close meanwhile)
@@ -652,8 +670,6 @@ impl App {
             peek: false,
             fs_peekable: false,
             bar: None,
-            dock: None,
-            game_strip: None,
             pop: None,
             page: Page::Home,
             eq_phase: 0.0,
@@ -725,10 +741,22 @@ impl App {
             shelf_preview_info: String::new(),
             shelf_preview_text: Vec::new(),
             shelf_preview_bitmap: None,
+            converter_open: false,
+            converter_input: String::new(),
+            converter_output: String::new(),
+            converter_group: 0,
+            converter_format: 0,
+            converter_progress: None,
+            converter_result: None,
+            converter_busy: false,
+            converter_shared: Arc::new(Mutex::new(crate::converter::Snapshot::default())),
+            data_profile: None,
+            data_profile_result: Arc::new(Mutex::new(None)),
             mirror_bitmap: None,
             mirror_seq: 0,
             shelf_hover: false,
             shelf_auto_open: false,
+            shelf_return_page: None,
             shelf_press: None,
             shelf_out: false,
             clip_filter: String::new(),
@@ -1121,7 +1149,6 @@ impl App {
             }
             self.glass_affinity_ready = true;
             if let Some(bar) = &self.bar { let _ = SetWindowDisplayAffinity(bar.hwnd, affinity); }
-            if let Some(dock) = &self.dock { let _ = SetWindowDisplayAffinity(dock.hwnd, affinity); }
             if let Some(pop) = &self.pop { let _ = SetWindowDisplayAffinity(pop.hwnd, affinity); }
             if let Some(buddy) = &self.buddy { let _ = SetWindowDisplayAffinity(buddy.hwnd, affinity); }
             if let Some(stage) = &self.stage { let _ = SetWindowDisplayAffinity(stage.hwnd, affinity); }
@@ -1294,7 +1321,6 @@ impl App {
         let need = !self.hidden
             && ((!self.expanded && self.cfg.day_line && self.mstate.playing && self.mstate.dur_ticks > 0)
                 || (self.expanded && self.mstate.playing)
-                || (self.dock.as_ref().is_some_and(|dock| dock.enabled) && self.mstate.playing && self.mstate.dur_ticks > 0)
                 || (self.expanded && self.page == Page::Typing && self.typing.started.is_some() && !self.typing.finished)
                 || self.timer_running());
         if need && !self.sec_on {
@@ -1469,6 +1495,8 @@ impl App {
         self.render();
         let next = if moving || self.fx_active() {
             16
+        } else if self.converter_busy && self.expanded && self.page == Page::ShelfPreview && !self.hidden && !self.fs_hidden {
+            50
         } else if self.eq_active() || self.alerting() || self.system_preview.is_some() {
             50
         } else {
@@ -1538,9 +1566,6 @@ impl App {
             }
             T_PEEK => self.on_peek_tick(),
             T_GAME => self.on_game_tick(),
-            T_GAME_STRIP => {
-                if let Some(strip) = &mut self.game_strip { strip.draw(&self.mon, self.scale); }
-            }
             T_WATER => self.water_reminder(),
             T_EYES => self.eye_reminder(),
             T_BPEEK => self.on_peek_timer(),
@@ -1571,9 +1596,6 @@ impl App {
                 // per second so the notch hides and returns automatically.
                 if self.cfg.fs_hide { self.on_foreground(); }
                 if self.expanded && self.page == Page::Media { self.spotify_vol = sys::spotify_volume(); }
-                if self.dock.as_ref().is_some_and(|dock| dock.enabled) && self.mstate.playing {
-                    self.sync_dock_media();
-                }
                 if self.timer_running() && self.timer_remaining_ms() <= 0 {
                     self.timer_done();
                 }
@@ -1587,11 +1609,6 @@ impl App {
             T_MIN => {
                 self.arm_minute_timer();
                 self.smart_tick();
-                // The optional dock clock uses this existing minute tick;
-                // without a redraw it could show the time from its last hover.
-                if self.dock.as_ref().is_some_and(|d| d.enabled) {
-                    self.sync_dock();
-                }
                 if self.bar_visible() {
                     self.refresh_bar_data();
                     self.render_bar();
@@ -2270,6 +2287,7 @@ impl App {
         if self.page == p {
             return;
         }
+        if p != Page::ShelfPreview { self.converter_open = false; }
         if self.page == Page::Mirror {
             crate::mirror::stop();
             self.mirror_bitmap = None;
@@ -2399,15 +2417,23 @@ impl App {
             Act::Pin => self.pinned = !self.pinned,
             Act::Tab(p) => self.select_page(p),
             Act::HomeLink(p) => self.select_page(p),
-            Act::SubpageBack => self.select_page(match self.page {
-                Page::Processes => Page::Stats,
-                Page::ShelfPreview => Page::Shelf,
-                Page::Activity => Page::Home,
-                Page::Weather => Page::Home,
-                Page::Tasks => Page::Home,
-                Page::Assistant => Page::Home,
-                _ => Page::Controls,
-            }),
+            Act::SubpageBack => {
+                if self.converter_open {
+                    self.converter_open = false;
+                    self.converter_input.clear();
+                    self.select_page(Page::Shelf);
+                } else {
+                    self.select_page(match self.page {
+                        Page::Processes => Page::Stats,
+                        Page::ShelfPreview => Page::Shelf,
+                        Page::Activity => Page::Home,
+                        Page::Weather => Page::Home,
+                        Page::Tasks => Page::Home,
+                        Page::Assistant => Page::Home,
+                        _ => Page::Controls,
+                    })
+                }
+            }
             Act::WeatherOpen => self.select_page(Page::Weather),
             Act::ActivityClear => { self.notices.clear(); self.system_notices.clear(); self.pending_previews.clear(); self.activity_scroll = 0; },
             Act::ActivityDismiss(index) => {
@@ -2421,7 +2447,30 @@ impl App {
                 if self.quiet_alerts { self.pending_previews.clear(); self.system_preview = None; }
             },
             Act::GlassToggle => self.toggle_glass(),
-            Act::DockToggle => self.toggle_dock(),
+            Act::MediaConvert => self.open_converter(),
+            Act::DataProfileOpen => self.choose_data_profile(),
+            Act::ConverterCategory(group) => {
+                if !self.converter_busy {
+                    self.converter_group = group.min(2);
+                    self.converter_format = 0;
+                    self.refresh_converter_output();
+                    self.render();
+                }
+            }
+            Act::ConverterFormat(index) => {
+                if !self.converter_busy && index < crate::converter::formats(self.converter_group).len() {
+                    self.converter_format = index;
+                    self.refresh_converter_output();
+                    self.render();
+                }
+            }
+            Act::ConverterStart => self.start_conversion(),
+            Act::ConverterToShelf => self.converter_to_shelf(),
+            Act::ConverterReveal => {
+                if let Some(Ok(path)) = &self.converter_result {
+                    sys::open("explorer.exe", &format!("/select,\"{path}\""));
+                }
+            }
             Act::AssistantOpen => self.select_page(Page::Assistant),
             Act::AssistantAsk => {
                 self.start_entry();
@@ -2798,7 +2847,7 @@ impl App {
             }
             Act::ShelfPaste => {
                 let paths = crate::shelf::clipboard_paths();
-                self.on_shelf_drop(paths);
+                self.on_shelf_paste(paths);
             }
             Act::ShelfArchive(i) => {
                 if let Some(path) = self.shelf.get(i) {
@@ -3332,9 +3381,6 @@ impl App {
         if started {
             self.buddy_event(crate::buddy::BuddyEv::MusicStarted);
         }
-        if self.dock.as_ref().is_some_and(|dock| dock.enabled) {
-            self.sync_dock_media();
-        }
         self.retarget();
         self.sync_timers();
         if self.anim_ms == 0 {
@@ -3530,25 +3576,38 @@ impl App {
         self.shelf_out
     }
 
-    /// A file drag from another program reached the notch: open the Shelf tab.
+    /// A file drag reached the island: reveal the in-app drop/conversion panel.
     pub fn on_shelf_enter(&mut self) {
         self.shelf_hover = true;
+        self.shelf_return_page = Some(self.page);
+        self.converter_open = true;
+        if !self.converter_busy {
+            self.converter_input.clear();
+            self.converter_output.clear();
+            self.converter_progress = None;
+            self.converter_result = None;
+        }
         if !self.expanded {
             self.shelf_auto_open = true;
             self.tucked = false;
             self.set_expanded(true);
         }
-        self.select_page(Page::Shelf);
+        self.select_page(Page::ShelfPreview);
         if self.anim_ms == 0 {
             self.render();
         }
     }
 
-    /// The drag left without dropping: fold the panel again if the drag opened it.
+    /// The drag left without dropping: restore the page that was underneath it.
     pub fn on_shelf_leave(&mut self) {
         self.shelf_hover = false;
+        self.converter_open = false;
+        let previous = self.shelf_return_page.take();
         if std::mem::take(&mut self.shelf_auto_open) && !self.pinned {
             self.set_expanded(false);
+        } else if let Some(page) = previous {
+            self.select_page(page);
+            if self.anim_ms == 0 { self.render(); }
         } else if self.anim_ms == 0 {
             self.render();
         }
@@ -3557,18 +3616,157 @@ impl App {
     pub fn on_shelf_drop(&mut self, paths: Vec<String>) {
         self.shelf_hover = false;
         self.shelf_auto_open = false;
-        for p in paths {
-            if self.shelf.len() < SHELF_MAX && !self.shelf.contains(&p) {
-                self.shelf.push(p);
+        self.shelf_return_page = None;
+        if paths.len() == 1 && !self.converter_busy && std::path::Path::new(&paths[0]).is_file() {
+            self.converter_open = true;
+            self.converter_input = paths[0].clone();
+            self.converter_group = crate::converter::group_for_path(std::path::Path::new(&paths[0]));
+            self.converter_format = 0;
+            self.refresh_converter_output();
+            self.converter_progress = None;
+            self.converter_result = None;
+            self.converter_busy = false;
+            if !self.expanded { self.set_expanded(true); }
+            self.select_page(Page::ShelfPreview);
+            if self.anim_ms == 0 { self.render(); }
+            return;
+        }
+        self.converter_open = false;
+        if let Some(index) = self.add_shelf_paths(paths) { self.open_shelf_preview(index); }
+        else { self.select_page(Page::Shelf); }
+    }
+
+    fn add_shelf_paths(&mut self, paths: Vec<String>) -> Option<usize> {
+        let mut last_added = None;
+        for path in paths {
+            if self.shelf.len() < SHELF_MAX && !self.shelf.contains(&path) {
+                self.shelf.push(path);
+                last_added = self.shelf.len().checked_sub(1);
             }
         }
-        self.shelf_changed();
-        if !self.shelf.is_empty() {
-            // Show Quick Look immediately after dropping a file, without
-            // requiring a second click on its tile.
-            self.open_shelf_preview(self.shelf.len() - 1);
-        } else {
+        if last_added.is_some() { self.shelf_changed(); }
+        last_added
+    }
+
+    fn on_shelf_paste(&mut self, paths: Vec<String>) {
+        self.converter_open = false;
+        if let Some(index) = self.add_shelf_paths(paths) { self.open_shelf_preview(index); }
+    }
+
+    pub fn open_converter(&mut self) {
+        self.converter_open = true;
+        if !self.converter_busy && self.converter_input.is_empty() {
+            self.converter_result = None;
+            self.converter_progress = None;
+            self.converter_output.clear();
+        }
+        self.pinned = false;
+        if !self.expanded { self.set_expanded(true); }
+        self.select_page(Page::ShelfPreview);
+        if self.converter_busy { self.set_anim(50); }
+        else if self.anim_ms == 0 { self.render(); }
+    }
+
+    fn start_conversion(&mut self) {
+        if self.converter_busy { return; }
+        let input = std::path::PathBuf::from(&self.converter_input);
+        let Some((_, extension)) = crate::converter::formats(self.converter_group).get(self.converter_format).copied() else { return; };
+        if !crate::converter::is_supported(&input) {
+            self.converter_result = Some(Err("This converter supports audio, video, and image files.".into()));
             self.render();
+            return;
+        }
+        if !input.is_file() {
+            self.converter_result = Some(Err("The source file is no longer available.".into()));
+            self.render();
+            return;
+        }
+        let output = if self.converter_output.is_empty() { crate::converter::destination(&input, extension) } else { std::path::PathBuf::from(&self.converter_output) };
+        self.converter_progress = None;
+        self.converter_result = None;
+        self.converter_busy = true;
+        self.converter_shared = Arc::new(Mutex::new(crate::converter::Snapshot::default()));
+        crate::converter::start(input, output, self.converter_shared.clone(), self.hwnd.0 as isize);
+        self.last_tick = Instant::now();
+        if self.expanded && self.page == Page::ShelfPreview && !self.hidden { self.set_anim(50); }
+        self.render();
+    }
+
+    pub fn on_converter_update(&mut self) {
+        let snapshot = self.converter_shared.lock().ok().map(|state| state.clone());
+        if let Some(snapshot) = snapshot {
+            self.converter_progress = snapshot.progress;
+            if let Some(result) = snapshot.result { self.converter_result = Some(result); self.converter_busy = false; }
+        }
+        if !self.hidden && !self.fs_hidden {
+            if self.converter_busy && self.expanded && self.page == Page::ShelfPreview && self.anim_ms == 0 {
+                self.last_tick = Instant::now();
+                self.set_anim(50);
+            }
+            if self.anim_ms != 16 { self.render(); }
+        }
+    }
+
+    fn open_data_profile_picker(&mut self) {
+        unsafe { self.prev_fg = GetForegroundWindow(); }
+        self.pinned = false;
+        if !self.expanded { self.set_expanded(true); }
+        self.select_page(Page::DataAnalysis);
+        self.render();
+        self.make_activatable(true);
+        unsafe { let _ = SetForegroundWindow(self.hwnd); }
+        let path = sys::pick_data_file();
+        self.make_activatable(false);
+        if !self.prev_fg.0.is_null() && self.prev_fg != self.hwnd {
+            unsafe { let _ = SetForegroundWindow(self.prev_fg); }
+        }
+        self.prev_fg = HWND::default();
+        if let Some(path) = path {
+            self.data_profile = None;
+            let shared: Arc<Mutex<Option<std::result::Result<crate::data_analysis::Profile, String>>>> = Arc::new(Mutex::new(None));
+            let result = shared.clone();
+            let hwnd = self.hwnd.0 as isize;
+            std::thread::spawn(move || {
+                let value = crate::data_analysis::profile(&path);
+                if let Ok(mut slot) = result.lock() { *slot = Some(value); }
+                unsafe { let _ = PostMessageW(Some(HWND(hwnd as *mut _)), WM_DATA_PROFILE, WPARAM(0), LPARAM(0)); }
+            });
+            self.data_profile = Some(Err("Profiling file…".into()));
+            self.data_profile_result = shared;
+        }
+        self.render();
+    }
+
+    pub fn on_data_profile_ready(&mut self) {
+        if let Ok(mut result) = self.data_profile_result.lock() {
+            if let Some(profile) = result.take() { self.data_profile = Some(profile); }
+        }
+        self.render();
+    }
+
+    pub fn choose_data_profile(&mut self) {
+        self.open_data_profile_picker();
+    }
+
+    fn converter_to_shelf(&mut self) {
+        let path = match &self.converter_result {
+            Some(Ok(converted)) => converted.clone(),
+            _ => self.converter_input.clone(),
+        };
+        if path.is_empty() { return; }
+        self.converter_open = false;
+        let index = if self.shelf.contains(&path) {
+            self.shelf.iter().position(|item| item == &path)
+        } else {
+            self.add_shelf_paths(vec![path])
+        };
+        if let Some(index) = index { self.open_shelf_preview(index); }
+    }
+
+    fn refresh_converter_output(&mut self) {
+        let input = std::path::Path::new(&self.converter_input);
+        if let Some((_, extension)) = crate::converter::formats(self.converter_group).get(self.converter_format) {
+            self.converter_output = crate::converter::destination(input, extension).to_string_lossy().into_owned();
         }
     }
 
@@ -3693,8 +3891,6 @@ impl App {
     pub fn reload_apps(&mut self) {
         self.apps = store::load_apps();
         self.load_app_icons();
-        if let Some(dock) = &mut self.dock { dock.reload_icons(&self.apps); }
-        self.sync_dock();
         self.render();
     }
 
@@ -3818,23 +4014,13 @@ impl App {
 
     pub fn on_foreground(&mut self) {
         self.update_call();
-        let league_pid = crate::game_strip::league_foreground(&self.mon);
-        if let Some(strip) = &mut self.game_strip {
-            strip.set_game(league_pid);
-            if strip.is_active() {
-                self.set_timer(T_GAME_STRIP, 1000);
-            } else {
-                self.kill_timer(T_GAME_STRIP);
-            }
-        }
         // Never hide because of our own window (typing a task makes us the
         // foreground window), and never hide while a task is being typed.
         let fgw = unsafe { GetForegroundWindow() };
-        let ours = fgw == self.hwnd || self.pop.as_ref().map(|p| p.hwnd) == Some(fgw)
-            || self.dock.as_ref().map(|d| d.hwnd) == Some(fgw);
+        let ours = fgw == self.hwnd || self.pop.as_ref().map(|p| p.hwnd) == Some(fgw);
         self.smart_hit = self.overlaps_notch(fgw);
         let fullscreen = if self.cfg.fs_hide && !ours {
-            sys::fullscreen_kind(&[self.hwnd, self.bar.as_ref().map(|b| b.hwnd).unwrap_or_default(), self.pop.as_ref().map(|p| p.hwnd).unwrap_or_default(), self.dock.as_ref().map(|d| d.hwnd).unwrap_or_default()], &self.mon)
+            sys::fullscreen_kind(&[self.hwnd, self.bar.as_ref().map(|b| b.hwnd).unwrap_or_default(), self.pop.as_ref().map(|p| p.hwnd).unwrap_or_default()], &self.mon)
         } else { 0 };
         let kind = if self.tucked || ours || self.entering.is_some() {
             0
@@ -3886,7 +4072,6 @@ impl App {
             }
             self.sync_timers();
             self.sync_bar();
-            self.sync_dock();
         }
         if !fs && self.fade_to < 1.0 {
             self.fade_to = 1.0;
@@ -3902,21 +4087,12 @@ impl App {
         }
     }
 
-    pub fn toggle_game_strip(&mut self) {
-        if let Some(strip) = &mut self.game_strip { strip.toggle(); }
-        self.on_foreground();
-    }
-
     pub fn on_display_change(&mut self, new_scale: f32) {
         self.update_monitor();
         if (new_scale - self.scale).abs() > 0.01 {
             self.rebuild_gfx(new_scale);
         }
         self.rebuild_bar();
-        self.rebuild_dock();
-        if let Some(old) = self.game_strip.take() {
-            self.game_strip = crate::game_strip::GameStrip::new(old.hwnd, self.scale);
-        }
         self.rebuild_pop();
         self.rebuild_buddy();
         self.rebuild_stage();

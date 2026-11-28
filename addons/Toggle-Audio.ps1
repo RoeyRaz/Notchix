@@ -1,9 +1,5 @@
 # AudioDeviceCmdlets: https://github.com/frgnca/AudioDeviceCmdlets
-# Set these to the exact two Windows playback device names you want to alternate.
-$PreferredOutputs = @(
-    'Headset Earphone (G435 Wireless Gaming Headset)',
-    'Headphones (E-3511)'
-)
+$PreferredOutputs = @()
 $ErrorActionPreference = 'Stop'
 try {
     $choicesFile = Join-Path $PSScriptRoot 'audio-outputs.txt'
@@ -11,6 +7,7 @@ try {
         $saved = @(Get-Content -LiteralPath $choicesFile -Encoding UTF8 | Where-Object { $_.Trim() })
         if ($saved.Count -eq 2) { $PreferredOutputs = $saved }
     }
+    if ($PreferredOutputs.Count -ne 2) { throw 'Choose your two playback devices with Choose-Audio.ps1 first.' }
     Import-Module AudioDeviceCmdlets -ErrorAction Stop
     $available = @(Get-AudioDevice -List | Where-Object { $_.Type -eq 'Playback' })
     $first = $available | Where-Object { $_.Name -eq $PreferredOutputs[0] } | Select-Object -First 1
@@ -21,6 +18,6 @@ try {
     Set-AudioDevice -ID $target.ID | Out-Null
 } catch {
     Add-Type -AssemblyName PresentationFramework
-    [System.Windows.MessageBox]::Show($_.Exception.Message, 'Nock Audio Switch') | Out-Null
+    [System.Windows.MessageBox]::Show($_.Exception.Message, 'Notchix Audio Switch') | Out-Null
     exit 1
 }

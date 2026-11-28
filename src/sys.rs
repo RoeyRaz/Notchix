@@ -216,47 +216,6 @@ pub fn open_windows_snap_layouts() {
     }
 }
 
-/// Open the native Windows Start or Search UI for the taskbar preview.
-pub fn open_start_or_search(search: bool) {
-    unsafe {
-        let key = |vk: u16, up: bool| INPUT {
-            r#type: INPUT_KEYBOARD,
-            Anonymous: INPUT_0 { ki: KEYBDINPUT {
-                wVk: VIRTUAL_KEY(vk), wScan: 0,
-                dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
-                time: 0, dwExtraInfo: 0,
-            } },
-        };
-        let input = if search {
-            vec![key(0x5B, false), key(0x53, false), key(0x53, true), key(0x5B, true)]
-        } else {
-            vec![key(0x5B, false), key(0x5B, true)]
-        };
-        SendInput(&input, std::mem::size_of::<INPUT>() as i32);
-    }
-}
-
-/// Open the Windows 11 notification center from the taskbar shortcut.
-pub fn open_notification_center() {
-    use windows::Win32::UI::Input::KeyboardAndMouse::*;
-    unsafe {
-        let key = |vk: u16, up: bool| INPUT {
-            r#type: INPUT_KEYBOARD,
-            Anonymous: INPUT_0 {
-                ki: KEYBDINPUT {
-                    wVk: VIRTUAL_KEY(vk),
-                    wScan: 0,
-                    dwFlags: if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) },
-                    time: 0,
-                    dwExtraInfo: 0,
-                },
-            },
-        };
-        let input = [key(0x5B, false), key(0x4E, false), key(0x4E, true), key(0x5B, true)];
-        SendInput(&input, std::mem::size_of::<INPUT>() as i32);
-    }
-}
-
 /// Windows Volume Mixer level for Spotify.exe on the current default output.
 /// This is Spotify's per-app volume, not the system master volume or Spotify
 /// Connect volume on another device.
@@ -1313,6 +1272,27 @@ pub fn open(target: &str, args: &str) {
     }
 }
 
+/// Pick a local CSV or TSV file without adding a heavyweight dialog dependency.
+pub fn pick_data_file() -> Option<PathBuf> {
+use windows::Win32::UI::Controls::Dialogs::{GetOpenFileNameW, OPENFILENAMEW, OFN_FILEMUSTEXIST};
+    let mut path = [0u16; 32_768];
+    let filter: Vec<u16> = "CSV and TSV files\0*.csv;*.tsv;*.tab\0All files\0*.*\0\0".encode_utf16().collect();
+    let mut dialog = OPENFILENAMEW {
+        lStructSize: std::mem::size_of::<OPENFILENAMEW>() as u32,
+        hwndOwner: HWND::default(),
+        lpstrFilter: PCWSTR(filter.as_ptr()),
+        lpstrFile: windows::core::PWSTR(path.as_mut_ptr()),
+        nMaxFile: path.len() as u32,
+        Flags: OFN_FILEMUSTEXIST,
+        ..Default::default()
+    };
+    unsafe {
+        if !GetOpenFileNameW(&mut dialog).as_bool() { return None; }
+    }
+    let end = path.iter().position(|c| *c == 0).unwrap_or(path.len());
+    Some(PathBuf::from(String::from_utf16_lossy(&path[..end])))
+}
+
 pub fn lock_pc() {
     unsafe {
         let _ = LockWorkStation();
@@ -1437,13 +1417,36 @@ pub fn autostart_enabled() -> bool {
 }
 
 fn expected_autostart_command(exe: &std::path::Path) -> String {
+    expected_autostart_command_with_family(exe, package_family_name().as_deref())
+}
+
+fn expected_autostart_command_with_family(exe: &std::path::Path, family: Option<&str>) -> String {
     // The versioned WindowsApps directory changes on every MSIX update.
     // Start via the package's stable application ID instead of that path.
     let path = exe.to_string_lossy().to_ascii_lowercase().replace('/', "\\");
-    if path.contains("\\windowsapps\\roey.nockcustom_") {
-        "cmd.exe /c start \"\" \"shell:AppsFolder\\Roey.NockCustom_pnky3m006n9h6!Nock\"".into()
+        if path.contains("\\windowsapps\\") {
+        if let Some(family) = family {
+            return format!("cmd.exe /c start \"\" \"shell:AppsFolder\\{family}!Nock\"");
+        }
+        format!("\"{}\"", exe.display())
     } else {
         format!("\"{}\"", exe.display())
+    }
+}
+
+fn package_family_name() -> Option<String> {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn GetCurrentPackageFamilyName(length: *mut u32, family_name: *mut u16) -> u32;
+    }
+    unsafe {
+        let mut length = 0u32;
+        let status = GetCurrentPackageFamilyName(&mut length, std::ptr::null_mut());
+        if status != 122 || length == 0 { return None; }
+        let mut name = vec![0u16; length as usize];
+        if GetCurrentPackageFamilyName(&mut length, name.as_mut_ptr()) != 0 { return None; }
+        let end = name.iter().position(|c| *c == 0).unwrap_or(name.len());
+        Some(String::from_utf16_lossy(&name[..end]))
     }
 }
 
@@ -1451,10 +1454,13 @@ fn expected_autostart_command(exe: &std::path::Path) -> String {
 mod autostart_tests {
     #[test]
     fn packaged_updates_keep_a_stable_startup_target() {
-        let old = std::path::Path::new(r"C:\Program Files\WindowsApps\Roey.NockCustom_0.13.8.22_x64__pnky3m006n9h6\nock.exe");
-        let new = std::path::Path::new(r"C:\Program Files\WindowsApps\Roey.NockCustom_0.13.8.23_x64__pnky3m006n9h6\nock.exe");
-        assert_eq!(super::expected_autostart_command(old), super::expected_autostart_command(new));
-        assert!(super::expected_autostart_command(new).contains("shell:AppsFolder"));
+        let old = std::path::Path::new(r"C:\Program Files\WindowsApps\Notchix.Desktop_0.13.8.22_x64__package\nock.exe");
+        let new = std::path::Path::new(r"C:\Program Files\WindowsApps\Notchix.Desktop_0.13.8.23_x64__package\nock.exe");
+        let family = "Notchix.Desktop_abc123";
+        let old_command = super::expected_autostart_command_with_family(old, Some(family));
+        let new_command = super::expected_autostart_command_with_family(new, Some(family));
+        assert_eq!(old_command, new_command);
+        assert!(new_command.contains("shell:AppsFolder\\Notchix.Desktop_abc123!Nock"));
     }
 }
 
@@ -2007,7 +2013,7 @@ mod start_menu_tests {
 // ------------------------------------------------------------------ updates ----
 
 pub const WM_UPDATE: u32 = 0x8000 + 10; // WM_APP + 10
-const REPO: &str = "Akhilesh-Varute/Nock";
+const REPO: &str = "RoeyRaz/Notchix";
 
 /// Newest release tag found by `check_update` (e.g. "v0.9.1").
 pub static LATEST: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
@@ -2050,15 +2056,16 @@ pub fn installed_by_setup() -> bool {
         || std::env::var("LOCALAPPDATA").is_ok_and(|l| is_install_path(&exe.to_string_lossy(), &l))
 }
 
-/// Is `exe` inside `<local app data>\Programs\Nock`? Ignores letter case, slash style and a `\\?\` prefix.
+/// Is `exe` inside a per-user product install folder? Ignores case and slash style.
 fn is_install_path(exe: &str, local: &str) -> bool {
     let norm = |s: &str| s.trim_start_matches(r"\\?\").replace('/', "\\").to_lowercase();
-    let dir = format!("{}\\programs\\nock\\", norm(local).trim_end_matches('\\'));
-    norm(exe).starts_with(&dir)
+    let base = format!("{}\\programs\\", norm(local).trim_end_matches('\\'));
+    norm(exe).strip_prefix(&base).is_some_and(|rest| {
+        rest.starts_with("notchix\\") || rest.starts_with("nock\\")
+    })
 }
 
-/// Download the installer for `tag`, run it silently (it stops this Nock and replaces the
-/// exe), then start Nock again. Runs in a detached PowerShell so it outlives this process.
+/// Download the Notchix installer for `tag`, run it silently, then restart the app.
 pub fn install_update(tag: &str) {
     let tag = tag.to_string();
     let exe = std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default().replace('\'', "''");
@@ -2066,8 +2073,8 @@ pub fn install_update(tag: &str) {
         let ver = tag.trim_start_matches('v');
         let cmd = format!(
             "$ErrorActionPreference='Stop'; try {{ [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
-             $f = Join-Path $env:TEMP 'NockSetup-update.exe'; \
-             Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/{REPO}/releases/download/{tag}/NockSetup-{ver}.exe' -OutFile $f; \
+             $f = Join-Path $env:TEMP 'Notchix-Setup-update.exe'; \
+             Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/{REPO}/releases/download/{tag}/Notchix-Setup-{ver}.exe' -OutFile $f; \
              Start-Process -FilePath $f -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -Wait }} catch {{}}; \
              Start-Process -FilePath '{exe}'"
         );
@@ -2076,7 +2083,7 @@ pub fn install_update(tag: &str) {
 }
 
 /// Update a copy that was not installed by the installer (the portable exe): download
-/// `Nock-portable-<ver>.exe`, and only once that worked stop this Nock, put the new file
+/// `Notchix-portable-<ver>.exe`, and only once that worked stop this app, put the new file
 /// over this exe and start it. If the file cannot be replaced (a read-only folder) the
 /// downloads page opens instead. A failed download leaves Nock running untouched.
 pub fn update_portable(tag: &str) {
@@ -2087,8 +2094,8 @@ pub fn update_portable(tag: &str) {
         let ver = tag.trim_start_matches('v');
         let cmd = format!(
             "$ErrorActionPreference='Stop'; try {{ [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
-             $f = Join-Path $env:TEMP 'Nock-portable-update.exe'; \
-             Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/{REPO}/releases/download/{tag}/Nock-portable-{ver}.exe' -OutFile $f; \
+             $f = Join-Path $env:TEMP 'Notchix-portable-update.exe'; \
+             Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/{REPO}/releases/download/{tag}/Notchix-portable-{ver}.exe' -OutFile $f; \
              if ((Get-Item $f).Length -lt 100000) {{ throw 'bad download' }} }} catch {{ exit 1 }}; \
              Stop-Process -Id {pid} -Force; Start-Sleep -Seconds 2; \
              try {{ Copy-Item -Force $f '{exe}' }} catch {{ Start-Process 'https://github.com/{REPO}/releases/latest' }}; \
@@ -2109,12 +2116,12 @@ mod update_tests {
 
     #[test]
     fn install_path_detection() {
-        let local = r"C:\Users\akhil\AppData\Local";
-        assert!(is_install_path(r"C:\Users\akhil\AppData\Local\Programs\Nock\nock.exe", local));
-        assert!(is_install_path(r"c:\users\AKHIL\appdata\local\programs\nock\NOCK.EXE", local));
-        assert!(is_install_path(r"\\?\C:\Users\akhil\AppData\Local\Programs\Nock\nock.exe", local));
-        assert!(!is_install_path(r"C:\Users\akhil\AppData\Local\Programs\NockOther\nock.exe", local));
-        assert!(!is_install_path(r"V:\Personal Projects\nock\target\release\nock.exe", local));
+        let local = r"C:\Users\User\AppData\Local";
+        assert!(is_install_path(r"C:\Users\User\AppData\Local\Programs\Notchix\nock.exe", local));
+        assert!(is_install_path(r"c:\users\USER\appdata\local\programs\nock\NOCK.EXE", local));
+        assert!(is_install_path(r"\\?\C:\Users\User\AppData\Local\Programs\Notchix\nock.exe", local));
+        assert!(!is_install_path(r"C:\Users\User\AppData\Local\Programs\NotchixOther\nock.exe", local));
+        assert!(!is_install_path(r"V:\Projects\nock\target\release\nock.exe", local));
     }
 
     #[test]

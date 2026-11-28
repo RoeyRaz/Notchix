@@ -6,12 +6,12 @@ echo.
 echo  NOTCHIX  -  INSTALL / UPDATE
 echo  ==================================
 echo.
-echo  This builds Nock on your PC and installs a signed Windows app package.
-echo  Your files and Nock settings are not removed.
-echo  Please exit any running Nock from the tray before continuing.
+echo  This builds Notchix on your PC and installs a Windows app package.
+echo  Your files and settings are not removed.
+echo  Please exit any running Notchix from the tray before continuing.
 echo.
 pause
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0packaging\windows\Install-NockCustom.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0packaging\windows\Install-Notchix.ps1"
 set "result=%errorlevel%"
 echo.
 if not "%result%"=="0" (

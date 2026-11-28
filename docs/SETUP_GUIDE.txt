@@ -1,0 +1,73 @@
+NOTCHIX QUICK SETUP
+===================
+
+Welcome
+-------
+Notchix is a lightweight desktop island for Windows. The setup guide page
+included with the installation has the full visual walkthrough. This sheet
+helps you find the main settings after installation.
+
+FIRST RUN
+---------
+1. Start Notchix from the Start menu. The notch appears at the top center.
+2. Right-click the Notchix tray icon to set startup, glass, clock, alerts,
+   buddy and other preferences.
+3. Click the notch to open its pages. Choose Media, Activity, Agenda, Shelf,
+   Tools, Stats, and other pages from the icon rail.
+4. Settings and tokens stay under %APPDATA%\Nock for compatibility. The
+   local CSV quick profile does not upload or save the selected data file.
+
+SPOTIFY QUICK QUEUE
+-------------------
+The regular media controls use Windows' media session and need no account link.
+For direct Spotify queue search, follow SPOTIFY_QUEUE_SETUP.md installed in
+the docs folder. It requires a free Spotify Developer Client ID, Spotify's
+PKCE sign-in, Premium, and an active playback device. Do not create or paste a
+Spotify Client Secret.
+
+CALENDAR / AGENDA
+-----------------
+Open the Agenda page and choose its calendar connection controls. For an
+iCalendar feed, use a private read-only ICS address from your calendar provider
+and keep it private. Refresh is event/page driven; do not paste the private URL
+into a public issue or chat. Multiple calendars and time zones are supported
+by the current parser only to the extent described by the source feed.
+
+QBITTORRENT
+-----------
+Follow QBIT_SETUP.md in the docs folder. Keep qBittorrent Web UI bound to
+localhost, use authentication, and never forward its port to the internet.
+Progress and ETA appear only when the local API reports them.
+
+NOTION TASK CAPTURE
+-------------------
+The optional quick capture setup is described in SETUP-NOTION.ps1. Share only
+the intended database with your Notion integration. The integration token is
+encrypted for the current Windows account using DPAPI. Notion is not required.
+
+LOCAL DATA QUICK PROFILE
+------------------------
+Tools > CSV quick profile opens a local CSV/TSV file picker. It reports data
+rows, columns, empty cells, and numeric min/mean/max. It supports UTF-8 files
+up to 32 MB, 250,000 rows and 128 columns. Parsing happens on a worker thread.
+The selected file is not copied or uploaded. This is a quick profile, not a
+replacement for a full statistical package.
+
+WINDOWS TASKBAR / GAME FPS
+-------------------------
+Notchix does not replace the Windows taskbar and does not show an in-game FPS
+overlay. If an older preview hid the Windows taskbar, launch Notchix once to
+restore its saved Windows auto-hide state. Windows' normal taskbar settings
+remain in control.
+
+UPDATES AND UNINSTALL
+--------------------
+Use the Notchix installer from the Notchix GitHub Releases page. It installs
+per user and does not require administrator rights. Updates remain in the same
+Notchix product folder. Uninstall under Windows Settings > Apps. Configuration
+in %APPDATA%\Nock is preserved unless you remove it yourself.
+
+PROJECT CREDIT
+--------------
+Notchix is an independently branded derivative based on Nock by Akhilesh
+Varute. See the included LICENSE for the upstream MIT license and copyright.

@@ -2,6 +2,18 @@
 
 ## Unreleased (v1.0 preparation)
 
+- Finalization pass: removed the experimental Notchix taskbar replacement and game FPS overlay, added one-time Explorer taskbar-state recovery, removed the dead Start-menu action, and restored the update check against Notchix releases.
+- Added local CSV/TSV quick profiling with a 32 MB, 250,000-row, 128-column cap; numeric summaries and missing-cell counts; CSV quoting support; and focused tests. Parsing runs away from UI thread. No upload or data persistence.
+- Rebranded MSIX identity and installer metadata to Notchix, kept `%APPDATA%\Nock` for settings continuity, and redirected updates to the Notchix repository. Rebuilt setup workflow and guide; first install from the old private MSIX identity may require a one-time uninstall.
+- Removed user-specific package and filesystem names from current release metadata, renamed the launcher/add-on/build scripts, and updated install/release file names. Kept the upstream Nock license and attribution.
+- Replaced the inherited Nock landing page with a Notchix-branded page, removed unverified performance claims and links to upstream download endpoints, and retained a clear Nock credit.
+
+- Added an in-notch drag-and-drop converter panel with native format chips, a custom progress animation, and output beside the original file. FFmpeg and FFprobe are needed for conversion; measured progress appears only when duration is available. Conversion currently covers supported audio, video, and image formats, not arbitrary files. Corrected Shelf handling for multiple drops and made “Add to Shelf” use the converted output after a successful conversion. No Windows file picker is used in the drop flow. Windows target check, release build, and existing tests pass (54 passed, 8 ignored). A local FFmpeg image-to-JPEG smoke check preserved its source; the live drag/drop panel still needs a visual check.
+
+- Paused further taskbar work after user feedback that the current prototype does not meet the intended design. Keep it optional and reversible while a new direction is considered.
+
+- Continued the optional taskbar prototype: imported Windows pins on a best-effort basis, grouped visible app windows with counts and click-to-cycle behavior, added a hover title card, widened the Spotify artwork/player area, added an in-taskbar master-volume slider, and routed network/power and notifications to Windows' own panels. Fixed hover-card collapse while crossing into it and kept the reversible Windows taskbar handoff check active even while music is stopped. This is not a full Explorer replacement; live window previews, selectable window menus, custom network/power tray popovers, and Windows 11 runtime verification remain release gates.
+
 - Spotify volume now keeps a quiet placeholder in Home when Windows has not created Spotify's app audio session; the Media player's unavailable state no longer collides with its source label. The control stays non-interactive until Windows exposes a real Spotify volume value.
 
 - Mirror capture now requests the webcam package capability, redraws the panel when camera frames arrive, and only refreshes when frame/status sequence changes. The taskbar has a new partial-width, connected-glass layout with pinned/running apps, real media controls and progress, quick system shortcuts, and a compact clock. Windows MSVC check and optimized build pass; this environment has no camera device, so live capture and the taskbar's on-device blur still need Windows hardware verification. App grouping, window previews, and the full tray remain unfinished release work.

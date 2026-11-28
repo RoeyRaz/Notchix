@@ -1,4 +1,4 @@
-# Run from Nock's tray menu to pick the two playback devices used by Audio Switch.
+# Choose the two playback devices used by Notchix Audio Switch.
 $ErrorActionPreference = 'Stop'
 try {
     Import-Module AudioDeviceCmdlets -ErrorAction Stop
@@ -8,7 +8,7 @@ try {
     if ($outputs.Count -lt 2) { throw 'Connect at least two playback devices first.' }
 
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = 'Nock | Select two audio outputs'
+    $form.Text = 'Notchix | Select two audio outputs'
     $form.Size = New-Object System.Drawing.Size(535,410)
     $form.StartPosition = 'CenterScreen'
     $form.FormBorderStyle = 'FixedDialog'
@@ -27,7 +27,7 @@ try {
     if (Test-Path $choicesFile) {
         $saved = @(Get-Content -LiteralPath $choicesFile -Encoding UTF8 | Where-Object { $_.Trim() })
     } else {
-        $saved = @('Headset Earphone (G435 Wireless Gaming Headset)', 'Headphones (E-3511)')
+        $saved = @()
     }
     for ($i = 0; $i -lt $list.Items.Count; $i++) {
         if ($saved -contains [string]$list.Items[$i]) { $list.SetItemChecked($i,$true) }
@@ -49,6 +49,6 @@ try {
     [void]$form.ShowDialog()
 } catch {
     Add-Type -AssemblyName PresentationFramework
-    [System.Windows.MessageBox]::Show($_.Exception.Message, 'Nock audio settings') | Out-Null
+    [System.Windows.MessageBox]::Show($_.Exception.Message, 'Notchix audio settings') | Out-Null
     exit 1
 }

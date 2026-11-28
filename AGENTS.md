@@ -1,28 +1,31 @@
-# Nock Custom project conventions
+# Notchix project conventions
 
-## Scope
+## Scope and attribution
 
-- The root `Cargo.toml` and `src/` are the active Windows source. `nock-custom/` is an older nested snapshot; do not edit or package it without an explicit migration plan.
-- Notchix is the visible fork brand. Keep the existing MSIX identity, executable name, and `%APPDATA%\Nock` path until an explicit, tested migration is approved.
-- Preserve Windows 11 behavior and existing Linux conditional compilation. Keep the MIT license and upstream attribution with distributions.
-- Prefer native Rust, Win32, Direct2D and WinRT. Avoid webviews, persistent workers, and new polling when a Windows event is available. Tick animations only while visible.
-- Keep `WM_APP` IDs unique. Keep external calls bounded and off the UI thread. Do not log credentials, private calendar URLs, notification text, or clipboard content.
-- Treat process I/O as activity only, never proof of a download or a source of percentage or ETA. Only display measured progress from a source that supplies a real total, and label unknown ETA as unknown. Browser playback and calls must not appear as downloads.
-- Keep media primary in the collapsed pill; transfer progress is a small secondary indicator. Camera and microphone states are independent small indicators.
-- For sound changes, use an original asset, respect mute and notification preferences, and avoid blocking the UI thread.
-- Live Glass may read only the island-sized area behind its own windows, must keep pixels in memory, and must never save or log captures. Keep capture and blur off the UI thread, throttle unchanged scenes, and fall back to the standard shell if capture fails. Glass uses display affinity to exclude Notchix from screen captures, so check screenshot and recording behavior explicitly.
-- Notion quick capture sends only after a deliberate click and uses a protected token. Do not claim Hebrew voice support until microphone transcription has been tested with a local engine.
+- The root `Cargo.toml` and `src/` are the active source. `nock-custom/` is a historical nested snapshot; do not edit or package it without an explicit migration plan.
+- Notchix is the user-facing product. Preserve Windows 11 behavior, Linux conditional compilation and existing settings under `%APPDATA%\Nock` unless a migration is specifically approved.
+- Notchix is based on Nock by Akhilesh Varute. Keep the upstream MIT license/copyright in all source and distributions, and credit the original author in public materials.
+- Do not place personal machine paths, personal package identities, tokens, private calendar URLs or user-specific credentials in tracked files. GitHub hosting-account names in repository links are controlled by repository ownership, not source rebranding.
+
+## Implementation rules
+
+- Prefer native Rust, Win32, Direct2D and WinRT. Avoid webviews and permanent workers when a user-triggered worker suffices. Animate only while visible or active.
+- Keep `WM_APP` IDs unique. Run file/network parsing off the UI thread; bound memory, input size and execution scope. Do not log credentials, private calendar URLs, notification text, or clipboard content.
+- Never infer a transfer percentage or ETA from process I/O or playback. Display measured values only when a source reports an actual total/progress; browser media and calls are not downloads.
+- Media remains primary in the collapsed pill; real transfer activity is secondary. Camera and microphone indicators stay separate.
+- Keep the Windows taskbar as the system taskbar. Do not reintroduce the Notchix taskbar replacement or in-game FPS overlay without a separately approved, profiled plan.
+- Preserve the local settings directory and restore any saved Explorer taskbar state from older previews at startup.
+- Keep Live Glass capture bounded to the island-sized area, in memory, off the UI thread; throttle unchanged scenes and fall back if capture fails. Check display-affinity behavior in screenshots and recordings.
+- Notion only sends after an explicit user action and stores secrets with Windows protection. Do not claim untested voice or AI support.
 
 ## Validation checklist
 
-1. Run `cargo fmt --check`, `cargo build --locked`, and `cargo test --locked` on Windows MSVC. Run `cargo clippy --locked --all-targets` when available.
-2. Build `cargo build --release --locked`; verify the executable starts on Windows 11 without another Nock instance running.
-3. Exercise Spotify play/pause, skip, artwork, clock, volume, and the music-plus-transfer layout. Check browser video and voice calls cause no download claim.
-4. Check qBittorrent progress and ETA against its own UI, plus API unavailable and authentication failure cases. Confirm no invented values.
-5. Check notification consent in an installed MSIX, new versus historical toasts, privacy, quiet mode, and sound. Check mic and camera indicators with real capture apps.
-6. Check calendar feeds and time zones, audio switching, shelf drag/drop, mirror lifecycle, calculator, typing game, top bar, and full-screen/DPI/multi-monitor behavior.
-7. Measure idle CPU, private bytes, wakeups, animation frame pacing, and startup time on a Windows 11 machine. Record numbers and hardware before making performance claims.
-   For Live Glass, compare moving and static content behind both collapsed and expanded shapes; check open/close for stale frames, multi-monitor and DPI transitions, games/fullscreen, and Glass off. Compare CPU and memory against the same build with `NOTCHIX_LIVE_GLASS=0`.
-8. Check installer/MSIX install, update, uninstall, signatures, and attribution before release.
+1. Format Rust files touched by the change with `rustfmt --edition 2021 <files>`. Run `cargo fmt --all -- --check`; the current repository has pre-existing formatting drift across legacy files, so avoid reformatting unrelated modules just to silence that baseline. Run `cargo build --locked`, `cargo test --locked` and `cargo clippy --locked --all-targets` where the toolchain supports them.
+2. Run Windows MSVC `cargo check --target x86_64-pc-windows-msvc` and `cargo build --release --locked`; launch the app on Windows 11 and verify a single instance.
+3. Run installer build, silent install/uninstall smoke check, Start menu shortcut check and update-path check. For MSIX, validate package identity, certificate and notification consent. Preserve `%APPDATA%\Nock`.
+4. Exercise Spotify controls and queue, notification privacy/quiet mode, mic/camera indicators, qBittorrent genuine progress and ETA, calendar/time zones, audio switching, converter and CSV quick profile.
+5. Verify drag/drop, mirror start/stop, full-screen hide, DPI/multi-monitor behavior, glass appearance and stale-frame clearing on the actual Windows 11 host.
+6. Scan tracked files and release artifacts for tokens, private calendar links, machine-local paths and personal identity. Retain original Nock license and credit.
+7. Profile idle CPU/RAM, wakeups, animation frame pacing and startup time before publishing performance claims.
 
-Do not mark a feature as working merely because it compiles or a preview renders.
+Do not call a feature functional merely because it compiles or its screen renders. Record live environment limitations.
