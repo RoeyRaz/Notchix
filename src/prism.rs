@@ -191,24 +191,22 @@ mod platform {
 
 /// Run the Prism database read off the UI thread, reusing the existing
 /// two-second transfer timer. A single atomic guard prevents overlapping reads.
+#[cfg(windows)]
 pub fn sample_async() {
-    #[cfg(windows)]
-    {
-        if BUSY.swap(true, Ordering::AcqRel) {
-            return;
-        }
-        if std::thread::Builder::new()
-            .name("prism-progress".into())
-            .spawn(|| {
-                if platform::sample() {
-                    CHANGED.store(true, Ordering::Release);
-                }
-                BUSY.store(false, Ordering::Release);
-            })
-            .is_err()
-        {
+    if BUSY.swap(true, Ordering::AcqRel) {
+        return;
+    }
+    if std::thread::Builder::new()
+        .name("prism-progress".into())
+        .spawn(|| {
+            if platform::sample() {
+                CHANGED.store(true, Ordering::Release);
+            }
             BUSY.store(false, Ordering::Release);
-        }
+        })
+        .is_err()
+    {
+        BUSY.store(false, Ordering::Release);
     }
 }
 
